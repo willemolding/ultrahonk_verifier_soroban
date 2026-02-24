@@ -62,6 +62,7 @@ use errors::VerifyError;
 
 pub use constants::{PUB_SIZE, VK_SIZE};
 pub use proof::ProofType;
+use soroban_sdk::Env;
 pub use types::*;
 
 /// A single public input.
@@ -69,7 +70,12 @@ pub type PublicInput = [u8; PUB_SIZE];
 pub type Pubs = [PublicInput];
 
 /// Verifies a proof against a verification key and public inputs.
-pub fn verify(vk_bytes: &[u8], proof: &ProofType, pubs: &Pubs) -> Result<(), VerifyError> {
+pub fn verify(
+    env: &Env,
+    vk_bytes: &[u8],
+    proof: &ProofType,
+    pubs: &Pubs,
+) -> Result<(), VerifyError> {
     // Parse VK
     let vk = VerificationKey::try_from(vk_bytes).map_err(|_| VerifyError::KeyError)?;
 
@@ -95,21 +101,27 @@ pub fn verify(vk_bytes: &[u8], proof: &ProofType, pubs: &Pubs) -> Result<(), Ver
         )),
     };
 
-    verify_internal(&vk, &proof, pubs)
+    verify_internal(env, &vk, &proof, pubs)
 }
 
 // Core verification logic.
 fn verify_internal(
+    env: &Env,
     vk: &VerificationKey,
     parsed_proof: &ParsedProof,
     public_inputs: &Pubs,
 ) -> Result<(), VerifyError> {
     // Compute the verification key hash
-    let vk_hash = Fr::from_be_bytes_mod_order(&vk.compute_vk_hash()).into_be_bytes32();
+    let vk_hash = Fr::from_be_bytes_mod_order(&vk.compute_vk_hash(env)).into_be_bytes32();
 
     // Generate the Fiat-Shamir challenges for the whole protocol
-    let t: Transcript =
-        generate_transcript(parsed_proof, public_inputs, &vk_hash, vk.log_circuit_size);
+    let t: Transcript = generate_transcript(
+        env,
+        parsed_proof,
+        public_inputs,
+        &vk_hash,
+        vk.log_circuit_size,
+    );
 
     // Derive public inputs delta
     let public_inputs_delta = t
@@ -128,7 +140,7 @@ fn verify_internal(
     })?;
 
     // Shplemini
-    verify_shplemini(parsed_proof, vk, &t).map_err(|_| VerifyError::VerificationError {
+    verify_shplemini(env, parsed_proof, vk, &t).map_err(|_| VerifyError::VerificationError {
         message: "Shplemini Failed.",
     })?;
 
@@ -278,6 +290,7 @@ fn compute_next_target_sum(
 
 // Verify the shplemini part of the proof.
 fn verify_shplemini(
+    env: &Env,
     parsed_proof: &ParsedProof,
     vk: &VerificationKey,
     tp: &Transcript,
@@ -544,7 +557,7 @@ fn verify_shplemini(
 
     // Aggregate pairing points
     let (p_0_other, p_1_other) = convert_pairing_points_to_g1(parsed_proof.pairing_point_object())?;
-    let recursion_separator = generate_recursion_separator(&p_0, &p_1, &p_0_other, &p_1_other);
+    let recursion_separator = generate_recursion_separator(env, &p_0, &p_1, &p_0_other, &p_1_other);
 
     // accumulate with aggregate points in proof
     let g1_points = [

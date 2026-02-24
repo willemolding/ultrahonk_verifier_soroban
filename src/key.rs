@@ -23,10 +23,10 @@ use crate::{
         read_g1_by_splitting, read_u64_from_evm_word, read_u64_from_evm_word_by_splitting,
         IntoBEBytes32,
     },
-    EVMWord, G1, U256, VK_SIZE,
+    EVMWord, Keccak256, G1, U256, VK_SIZE,
 };
 use core::fmt;
-use sha3::{digest::Update, Digest, Keccak256};
+use soroban_sdk::Env;
 
 #[derive(Debug, PartialEq)]
 pub enum VerificationKeyError {
@@ -489,8 +489,8 @@ impl TryFrom<&[u8]> for VerificationKey {
 
 impl VerificationKey {
     /// Computes the hash of the verification key using Keccak256.
-    pub fn compute_vk_hash(&self) -> EVMWord {
-        Keccak256::new()
+    pub fn compute_vk_hash(&self, env: &Env) -> EVMWord {
+        Keccak256::new(env)
             .chain(U256::from(self.log_circuit_size).into_be_bytes32())
             .chain(U256::from(self.combined_input_size).into_be_bytes32())
             .chain(U256::from(self.pub_inputs_offset).into_be_bytes32())

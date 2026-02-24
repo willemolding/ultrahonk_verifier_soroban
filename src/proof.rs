@@ -26,13 +26,13 @@ use crate::{
     },
     errors::{ConversionError, GroupError},
     utils::{read_g1_by_splitting, IntoBEBytes32, IntoU256},
-    EVMWord, Fq, Fr, G1,
+    EVMWord, Fq, Fr, Keccak256, G1,
 };
 use alloc::{boxed::Box, vec::Vec};
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, MontFp, PrimeField};
 use core::{array::from_fn, fmt};
-use sha3::{Digest, Keccak256};
+use soroban_sdk::Env;
 
 /// Unified enum for handling errors of all flavors.
 #[derive(Debug, PartialEq)]
@@ -1092,6 +1092,7 @@ pub(crate) fn convert_pairing_points_to_g1(
 /// # Returns
 /// * `Fr` - The generated recursion separator as a field element.
 pub(crate) fn generate_recursion_separator(
+    env: &Env,
     acc_lhs: &G1,
     acc_rhs: &G1,
     proof_lhs: &G1,
@@ -1101,7 +1102,7 @@ pub(crate) fn generate_recursion_separator(
     // hash the proof aggregated Y
     // hash the accum X
     // hash the accum Y
-    let hash: EVMWord = Keccak256::new()
+    let hash: EVMWord = Keccak256::new(env)
         // Proof points
         .chain_update(
             proof_lhs

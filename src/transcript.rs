@@ -21,11 +21,11 @@ use crate::{
     },
     proof::{CommonProofData, ZKProof},
     utils::IntoBEBytes32,
-    EVMWord, Fr, ParsedProof, Pubs,
+    EVMWord, Fr, Keccak256, ParsedProof, Pubs,
 };
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field, PrimeField};
-use sha3::{Digest, Keccak256};
+use soroban_sdk::Env;
 
 #[derive(Debug)]
 pub(crate) enum Transcript {
@@ -259,31 +259,33 @@ impl RelationParametersChallenges {
 
 /// Generate the full transcript for a given proof.
 pub(crate) fn generate_transcript(
+    env: &Env,
     parsed_proof: &ParsedProof,
     public_inputs: &Pubs,
     vk_hash: &EVMWord,
     log_n: u64,
 ) -> Transcript {
     let (rp_challenges, previous_challenge) =
-        generate_relation_parameters_challenges(parsed_proof, public_inputs, vk_hash);
-    let (alphas, previous_challenge) = generate_alpha_challenges(previous_challenge, parsed_proof);
+        generate_relation_parameters_challenges(env, parsed_proof, public_inputs, vk_hash);
+    let (alphas, previous_challenge) =
+        generate_alpha_challenges(env, previous_challenge, parsed_proof);
     let (gate_challenges, mut previous_challenge) =
-        generate_gate_challenges(previous_challenge, log_n);
+        generate_gate_challenges(env, previous_challenge, log_n);
 
     let mut libra_challenge = Fr::ZERO;
     if let ParsedProof::ZK(zk_proof) = parsed_proof {
         (libra_challenge, previous_challenge) =
-            generate_libra_challenge(previous_challenge, zk_proof);
+            generate_libra_challenge(env, previous_challenge, zk_proof);
     }
 
     let (sumcheck_u_challenges, previous_challenge) =
-        generate_sumcheck_challenges(parsed_proof, previous_challenge, log_n);
-    let (rho, previous_challenge) = generate_rho_challenge(parsed_proof, previous_challenge);
+        generate_sumcheck_challenges(env, parsed_proof, previous_challenge, log_n);
+    let (rho, previous_challenge) = generate_rho_challenge(env, parsed_proof, previous_challenge);
     let (gemini_r, previous_challenge) =
-        generate_gemini_r_challenge(parsed_proof, previous_challenge, log_n);
+        generate_gemini_r_challenge(env, parsed_proof, previous_challenge, log_n);
     let (shplonk_nu, previous_challenge) =
-        generate_shplonk_nu_challenge(parsed_proof, previous_challenge, log_n);
-    let (shplonk_z, _) = generate_shplonk_z_challenge(parsed_proof, previous_challenge);
+        generate_shplonk_nu_challenge(env, parsed_proof, previous_challenge, log_n);
+    let (shplonk_z, _) = generate_shplonk_z_challenge(env, parsed_proof, previous_challenge);
 
     match parsed_proof {
         ParsedProof::ZK(_) => Transcript::ZK(ZKTranscript {
@@ -327,17 +329,18 @@ fn split_challenge(challenge: Fr) -> (Fr, Fr) {
 
 // Generate the relation parameters challenges: eta, eta_two, eta_three, beta, gamma
 fn generate_relation_parameters_challenges(
+    env: &Env,
     parsed_proof: &ParsedProof,
     public_inputs: &Pubs,
     vk_hash: &EVMWord,
 ) -> (RelationParametersChallenges, Fr) {
     // Round 0
     let [eta, eta_two, eta_three, previous_challenge] =
-        generate_eta_challenge(parsed_proof, public_inputs, vk_hash);
+        generate_eta_challenge(env, parsed_proof, public_inputs, vk_hash);
 
     // Round 1
     let [beta, gamma, next_previous_challenge] =
-        generate_beta_and_gamma_challenges(previous_challenge, parsed_proof);
+        generate_beta_and_gamma_challenges(env, previous_challenge, parsed_proof);
 
     (
         RelationParametersChallenges::new(eta, eta_two, eta_three, beta, gamma),
@@ -347,11 +350,12 @@ fn generate_relation_parameters_challenges(
 
 // Generate the eta challenges
 fn generate_eta_challenge(
+    env: &Env,
     parsed_proof: &ParsedProof,
     public_inputs: &Pubs,
     vk_hash: &EVMWord,
 ) -> [Fr; 4] {
-    let mut round0 = Keccak256::new().chain_update(vk_hash);
+    let mut round0 = Keccak256::new(env).chain_update(vk_hash);
 
     for word in public_inputs
         .iter()
@@ -429,7 +433,7 @@ fn generate_eta_challenge(
 
     let (eta, eta_two) = split_challenge(previous_challenge);
 
-    let hash: EVMWord = Keccak256::new()
+    let hash: EVMWord = Keccak256::new(env)
         .chain_update(previous_challenge.into_be_bytes32())
         .finalize()
         .into();
@@ -441,10 +445,11 @@ fn generate_eta_challenge(
 
 // Generate beta and gamma challenges
 fn generate_beta_and_gamma_challenges(
+    env: &Env,
     previous_challenge: Fr,
     parsed_proof: &ParsedProof,
 ) -> [Fr; 3] {
-    let round1: EVMWord = Keccak256::new()
+    let round1: EVMWord = Keccak256::new(env)
         .chain_update(previous_challenge.into_be_bytes32())
         .chain_update(
             parsed_proof
@@ -499,13 +504,14 @@ fn generate_beta_and_gamma_challenges(
 
 // Alpha challenges non-linearize the gate contributions
 fn generate_alpha_challenges(
+    env: &Env,
     previous_challenge: Fr,
     parsed_proof: &ParsedProof,
 ) -> ([Fr; NUMBER_OF_ALPHAS], Fr) {
     let mut alphas = [Fr::ZERO; NUMBER_OF_ALPHAS];
 
     // Generate the original sumcheck alpha 0 by hashing zPerm and zLookup
-    let alpha0: EVMWord = Keccak256::new()
+    let alpha0: EVMWord = Keccak256::new(env)
         .chain_update(previous_challenge.into_be_bytes32())
         .chain_update(
             parsed_proof
@@ -553,11 +559,12 @@ fn generate_alpha_challenges(
 
 // Generate the gate challenges
 fn generate_gate_challenges(
+    env: &Env,
     previous_challenge: Fr,
     log_n: u64,
 ) -> ([Fr; CONST_PROOF_SIZE_LOG_N], Fr) {
     let mut gate_challenges = [Fr::ZERO; CONST_PROOF_SIZE_LOG_N];
-    let hash: EVMWord = Keccak256::new()
+    let hash: EVMWord = Keccak256::new(env)
         .chain_update(previous_challenge.into_be_bytes32())
         .finalize()
         .into();
@@ -573,8 +580,8 @@ fn generate_gate_challenges(
 }
 
 // Function exclusive to `ZKProof`.
-fn generate_libra_challenge(previous_challenge: Fr, zk_proof: &ZKProof) -> (Fr, Fr) {
-    let hash: EVMWord = Keccak256::new()
+fn generate_libra_challenge(env: &Env, previous_challenge: Fr, zk_proof: &ZKProof) -> (Fr, Fr) {
+    let hash: EVMWord = Keccak256::new(env)
         .chain_update(previous_challenge.into_be_bytes32())
         .chain_update(
             zk_proof.libra_commitments[0]
@@ -600,6 +607,7 @@ fn generate_libra_challenge(previous_challenge: Fr, zk_proof: &ZKProof) -> (Fr, 
 
 // Generate the sumcheck u challenges
 fn generate_sumcheck_challenges(
+    env: &Env,
     parsed_proof: &ParsedProof,
     mut previous_challenge: Fr,
     log_n: u64,
@@ -611,7 +619,7 @@ fn generate_sumcheck_challenges(
         .enumerate()
         .take(log_n as usize)
     {
-        let mut hasher = Keccak256::new();
+        let mut hasher = Keccak256::new(env);
 
         hasher = hasher.chain_update(previous_challenge.into_be_bytes32());
 
@@ -629,8 +637,12 @@ fn generate_sumcheck_challenges(
 }
 
 // Generate the rho challenges
-fn generate_rho_challenge(parsed_proof: &ParsedProof, previous_challenge: Fr) -> (Fr, Fr) {
-    let mut hasher = Keccak256::new();
+fn generate_rho_challenge(
+    env: &Env,
+    parsed_proof: &ParsedProof,
+    previous_challenge: Fr,
+) -> (Fr, Fr) {
+    let mut hasher = Keccak256::new(env);
 
     hasher.update(previous_challenge.into_be_bytes32());
 
@@ -678,11 +690,12 @@ fn generate_rho_challenge(parsed_proof: &ParsedProof, previous_challenge: Fr) ->
 
 // Generate the gemini r challenge
 fn generate_gemini_r_challenge(
+    env: &Env,
     parsed_proof: &ParsedProof,
     previous_challenge: Fr,
     log_n: u64,
 ) -> (Fr, Fr) {
-    let mut hasher = Keccak256::new();
+    let mut hasher = Keccak256::new(env);
 
     hasher.update(previous_challenge.into_be_bytes32());
 
@@ -712,11 +725,12 @@ fn generate_gemini_r_challenge(
 
 // Generate the shplonk nu challenge
 fn generate_shplonk_nu_challenge(
+    env: &Env,
     parsed_proof: &ParsedProof,
     prev_challenge: Fr,
     log_n: u64,
 ) -> (Fr, Fr) {
-    let mut hasher = Keccak256::new();
+    let mut hasher = Keccak256::new(env);
 
     hasher.update(prev_challenge.into_be_bytes32());
 
@@ -740,8 +754,12 @@ fn generate_shplonk_nu_challenge(
 }
 
 // Generate the shplonk z challenge
-fn generate_shplonk_z_challenge(parsed_proof: &ParsedProof, previous_challenge: Fr) -> (Fr, Fr) {
-    let hash: EVMWord = Keccak256::new()
+fn generate_shplonk_z_challenge(
+    env: &Env,
+    parsed_proof: &ParsedProof,
+    previous_challenge: Fr,
+) -> (Fr, Fr) {
+    let hash: EVMWord = Keccak256::new(env)
         .chain_update(previous_challenge.into_be_bytes32())
         .chain_update(
             parsed_proof

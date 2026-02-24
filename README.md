@@ -11,6 +11,7 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 use ultrahonk_no_std::{ProofType, verify};
+use soroban_sdk::Env;
 
 // Sample zero-knowledge proof, vk, and public inputs
 let zk_proof_data = Box::from(include_bytes!("../tests/data/zk/proof").as_slice());
@@ -24,7 +25,8 @@ let pubs: Vec<[u8; 32]> = include_bytes!("../tests/data/zk/pubs")
 let proof: ProofType = ProofType::ZK(zk_proof_data);
 
 // Call the UltraHonk verifier.
-assert!(verify(vk, &proof, &pubs).is_ok()); // success
+let env = Env::default();
+assert!(verify(&env, vk, &proof, &pubs).is_ok()); // success
 ```
 
 > **Note:** Please note that this verifier currently only supports the following configuration:

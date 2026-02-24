@@ -19,6 +19,11 @@ use alloc::boxed::Box;
 use rstest::{fixture, rstest};
 
 #[fixture]
+fn env() -> Env {
+    Env::default()
+}
+
+#[fixture]
 fn valid_zk_proof() -> Box<[u8]> {
     Box::new(hex_literal::hex!(
         "
@@ -551,20 +556,28 @@ fn valid_pubs() -> [PublicInput; 1] {
 
 #[rstest]
 fn verify_valid_zk_proof(
+    env: Env,
     valid_vk: [u8; VK_SIZE],
     valid_zk_proof: Box<[u8]>,
     valid_pubs: [PublicInput; 1],
 ) {
-    assert!(verify(&valid_vk, &ProofType::ZK(valid_zk_proof), &valid_pubs).is_ok());
+    assert!(verify(&env, &valid_vk, &ProofType::ZK(valid_zk_proof), &valid_pubs).is_ok());
 }
 
 #[rstest]
 fn verify_valid_plain_proof(
+    env: Env,
     valid_vk: [u8; VK_SIZE],
     valid_plain_proof: Box<[u8]>,
     valid_pubs: [PublicInput; 1],
 ) {
-    assert!(verify(&valid_vk, &ProofType::Plain(valid_plain_proof), &valid_pubs).is_ok());
+    assert!(verify(
+        &env,
+        &valid_vk,
+        &ProofType::Plain(valid_plain_proof),
+        &valid_pubs
+    )
+    .is_ok());
 }
 
 mod reject {
@@ -573,6 +586,7 @@ mod reject {
 
     #[rstest]
     fn a_zk_proof_with_non_matching_number_of_pis(
+        env: Env,
         valid_vk: [u8; VK_SIZE],
         valid_zk_proof: Box<[u8]>,
         _valid_pubs: [PublicInput; 1],
@@ -580,7 +594,13 @@ mod reject {
         let invalid_pubs: [PublicInput; 0] = [];
 
         assert_eq!(
-            verify(&valid_vk, &ProofType::ZK(valid_zk_proof), &invalid_pubs).unwrap_err(),
+            verify(
+                &env,
+                &valid_vk,
+                &ProofType::ZK(valid_zk_proof),
+                &invalid_pubs
+            )
+            .unwrap_err(),
             VerifyError::PublicInputError {
                 message: "Provided public inputs length does not match value in vk"
             }
@@ -589,6 +609,7 @@ mod reject {
 
     #[rstest]
     fn a_plain_proof_with_non_matching_number_of_pis(
+        env: Env,
         valid_vk: [u8; VK_SIZE],
         valid_plain_proof: Box<[u8]>,
         _valid_pubs: [PublicInput; 1],
@@ -597,6 +618,7 @@ mod reject {
 
         assert_eq!(
             verify(
+                &env,
                 &valid_vk,
                 &ProofType::Plain(valid_plain_proof),
                 &invalid_pubs
@@ -610,6 +632,7 @@ mod reject {
 
     #[rstest]
     fn a_zk_proof_failing_sumcheck(
+        env: Env,
         valid_vk: [u8; VK_SIZE],
         valid_zk_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
@@ -622,6 +645,7 @@ mod reject {
 
         assert_eq!(
             verify(
+                &env,
                 &valid_vk,
                 &ProofType::ZK(invalid_zk_proof.into_boxed_slice()),
                 &valid_pubs
@@ -635,6 +659,7 @@ mod reject {
 
     #[rstest]
     fn a_plain_proof_failing_sumcheck(
+        env: Env,
         valid_vk: [u8; VK_SIZE],
         valid_plain_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
@@ -647,6 +672,7 @@ mod reject {
 
         assert_eq!(
             verify(
+                &env,
                 &valid_vk,
                 &ProofType::Plain(invalid_plain_proof.into_boxed_slice()),
                 &valid_pubs
@@ -660,6 +686,7 @@ mod reject {
 
     #[rstest]
     fn a_zk_proof_failing_sumcheck_v2(
+        env: Env,
         valid_vk: [u8; VK_SIZE],
         valid_zk_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
@@ -675,6 +702,7 @@ mod reject {
 
         assert_eq!(
             verify(
+                &env,
                 &valid_vk,
                 &ProofType::ZK(invalid_zk_proof.into_boxed_slice()),
                 &valid_pubs
@@ -688,6 +716,7 @@ mod reject {
 
     #[rstest]
     fn a_plain_proof_failing_sumcheck_v2(
+        env: Env,
         valid_vk: [u8; VK_SIZE],
         valid_plain_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
@@ -703,6 +732,7 @@ mod reject {
 
         assert_eq!(
             verify(
+                &env,
                 &valid_vk,
                 &ProofType::Plain(invalid_plain_proof.into_boxed_slice()),
                 &valid_pubs
@@ -716,6 +746,7 @@ mod reject {
 
     #[rstest]
     fn a_zk_proof_failing_shplemini_pairing_check(
+        env: Env,
         valid_vk: [u8; VK_SIZE],
         valid_zk_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
@@ -736,6 +767,7 @@ mod reject {
 
         assert_eq!(
             verify(
+                &env,
                 &valid_vk,
                 &ProofType::ZK(invalid_zk_proof.into_boxed_slice()),
                 &valid_pubs
@@ -749,6 +781,7 @@ mod reject {
 
     #[rstest]
     fn a_plain_proof_failing_shplemini_pairing_check(
+        env: Env,
         valid_vk: [u8; VK_SIZE],
         valid_plain_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
@@ -769,6 +802,7 @@ mod reject {
 
         assert_eq!(
             verify(
+                &env,
                 &valid_vk,
                 &ProofType::Plain(invalid_plain_proof.into_boxed_slice()),
                 &valid_pubs
