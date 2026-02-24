@@ -37,7 +37,6 @@ use crate::{
     EVMWord, Fq, Fq2, Fr, G2, U256,
 };
 use alloc::{format, string::String};
-// use ark_bn254_ext::CurveHooks;
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, PrimeField};
 
@@ -216,9 +215,17 @@ pub(crate) fn to_hex_string(data: &[u8]) -> String {
 
 // Soroban type conversion utils
 use ark_ff::BigInteger;
-use soroban_sdk::Env;
+use soroban_sdk::{Bytes, Env};
 
-pub(crate) fn to_soroban_g1(env: &Env, affine: G1) -> soroban_sdk::crypto::bn254::Bn254G1Affine {
+pub(crate) fn to_soroban_fr(env: &Env, fr: &Fr) -> soroban_sdk::crypto::bn254::Fr {
+    let be_bytes = fr.into_bigint().to_bytes_be();
+    soroban_sdk::crypto::bn254::Fr::from_u256(soroban_sdk::U256::from_be_bytes(
+        env,
+        &Bytes::from_slice(env, &be_bytes),
+    ))
+}
+
+pub(crate) fn to_soroban_g1(env: &Env, affine: &G1) -> soroban_sdk::crypto::bn254::Bn254G1Affine {
     let mut out = [0u8; 64];
 
     if affine.is_zero() {
@@ -240,7 +247,21 @@ pub(crate) fn to_soroban_g1(env: &Env, affine: G1) -> soroban_sdk::crypto::bn254
     soroban_sdk::crypto::bn254::Bn254G1Affine::from_array(env, &out)
 }
 
-pub(crate) fn to_soroban_g2(env: &Env, affine: G2) -> soroban_sdk::crypto::bn254::Bn254G2Affine {
+pub(crate) fn from_soroban_g1(point: &soroban_sdk::crypto::bn254::Bn254G1Affine) -> G1 {
+    let arr = point.to_array();
+    let x = read_u256(&arr[..32]).expect("Conversion should work at this point");
+    let y = read_u256(&arr[32..]).expect("Conversion should work at this point");
+
+    // If (0, 0) is given, we interpret this as the point at infinity:
+    // https://docs.rs/ark-ec/0.5.0/src/ark_ec/models/short_weierstrass/affine.rs.html#212-218
+    if x == U256::zero() && y == U256::zero() {
+        return G1::zero();
+    }
+
+    G1::new_unchecked(x.into_fq(), y.into_fq())
+}
+
+pub(crate) fn to_soroban_g2(env: &Env, affine: &G2) -> soroban_sdk::crypto::bn254::Bn254G2Affine {
     let mut out = [0u8; 128];
 
     if affine.is_zero() {
@@ -267,4 +288,19 @@ pub(crate) fn to_soroban_g2(env: &Env, affine: G2) -> soroban_sdk::crypto::bn254
     assert!(out[96] & 0xc0 == 0, "flag bits set in G2 point encoding");
 
     soroban_sdk::crypto::bn254::Bn254G2Affine::from_array(env, &out)
+}
+
+pub(crate) fn soroban_msm(env: &Env, points: &[G1], scalars: &[crate::Fr]) -> crate::G1 {
+    assert_eq!(points.len(), scalars.len());
+
+    let mut acc = soroban_sdk::crypto::bn254::Bn254G1Affine::from_array(env, &[0u8; 64]);
+    for (point, scalar) in points.iter().zip(scalars.iter()) {
+        let point = to_soroban_g1(env, point);
+        let scaled = env
+            .crypto()
+            .bn254()
+            .g1_mul(&point, &to_soroban_fr(env, scalar));
+        acc = acc + scaled;
+    }
+    from_soroban_g1(&acc)
 }

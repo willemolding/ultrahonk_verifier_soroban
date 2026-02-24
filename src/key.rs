@@ -642,7 +642,7 @@ mod should {
     }
 
     mod reject {
-        use ark_bn254::Fr;
+        use crate::Fr;
         use ark_ff::{Field, PrimeField};
 
         use crate::{

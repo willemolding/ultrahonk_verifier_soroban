@@ -47,7 +47,7 @@ use crate::{
     relations::accumulate_relation_evaluations,
     srs::{SRS_G2, SRS_G2_VK},
     transcript::{generate_transcript, CommonTranscriptData, Transcript},
-    utils::{to_soroban_g1, IntoBEBytes32},
+    utils::{soroban_msm, to_soroban_g1, IntoBEBytes32},
 };
 use alloc::{boxed::Box, vec::Vec};
 use ark_bn254::G1Projective;
@@ -551,11 +551,13 @@ fn verify_shplemini(
     scalars[boundary] = tp.shplonk_z(); // evaluation challenge
 
     // Pairing Check
-    let p_0 = G1Projective::msm(&commitments, &scalars)
-        .map_err(|_| ProofError::OtherError {
-            message: "Shplemini MSM computation failed.",
-        })?
-        .into_affine();
+
+    let p_0 = soroban_msm(env, &commitments, &scalars);
+    // let p_0 = G1Projective::msm(&commitments, &scalars)
+    //     .map_err(|_| ProofError::OtherError {
+    //         message: "Shplemini MSM computation failed.",
+    //     })?
+    //     .into_affine();
     let p_1 = -quotient_commitment;
 
     // Aggregate pairing points
@@ -565,8 +567,8 @@ fn verify_shplemini(
     // accumulate with aggregate points in proof
     let g1_points = soroban_sdk::vec![
         env,
-        to_soroban_g1(env, (p_0 * recursion_separator + p_0_other).into_affine()),
-        to_soroban_g1(env, (p_1 * recursion_separator + p_1_other).into_affine()),
+        to_soroban_g1(env, &(p_0 * recursion_separator + p_0_other).into_affine()),
+        to_soroban_g1(env, &(p_1 * recursion_separator + p_1_other).into_affine()),
     ];
 
     let g2_points = soroban_sdk::vec![
