@@ -49,7 +49,7 @@ use crate::{
     transcript::{generate_transcript, CommonTranscriptData, Transcript},
     utils::{read_g2, IntoBEBytes32},
 };
-use alloc::{boxed::Box, string::ToString, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 use ark_bn254::G1Projective;
 use ark_ec::{
     bn::{G1Prepared, G2Prepared},
@@ -537,7 +537,7 @@ fn verify_shplemini(
     // Pairing Check
     let p_0 = G1Projective::msm(&commitments, &scalars)
         .map_err(|_| ProofError::OtherError {
-            message: "Shplemini MSM computation failed.".to_string(),
+            message: "Shplemini MSM computation failed.",
         })?
         .into_affine();
     let p_1 = -quotient_commitment;

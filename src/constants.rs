@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use ark_bn254::Fr;
+use crate::Fr;
 use ark_ff::MontFp;
 
 pub const CONST_PROOF_SIZE_LOG_N: usize = 28;

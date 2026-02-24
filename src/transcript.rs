@@ -21,9 +21,8 @@ use crate::{
     },
     proof::{CommonProofData, ZKProof},
     utils::IntoBEBytes32,
-    EVMWord, ParsedProof, Pubs,
+    EVMWord, Fr, ParsedProof, Pubs,
 };
-use ark_bn254::Fr;
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field, PrimeField};
 use sha3::{Digest, Keccak256};

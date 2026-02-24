@@ -17,8 +17,8 @@
 use crate::{
     constants::{NUMBER_OF_ALPHAS, NUMBER_OF_ENTITIES, NUMBER_OF_SUBRELATIONS},
     transcript::RelationParametersChallenges,
+    Fr,
 };
-use ark_bn254::Fr;
 use ark_ff::{AdditiveGroup, Field, MontFp};
 
 const GRUMPKIN_CURVE_B_PARAMETER_NEGATED: Fr = MontFp!("17");

@@ -26,14 +26,9 @@ use crate::{
     },
     errors::{ConversionError, GroupError},
     utils::{read_g1_by_splitting, IntoBEBytes32, IntoU256},
-    EVMWord, Fr, G1,
+    EVMWord, Fq, Fr, G1,
 };
-use alloc::{
-    boxed::Box,
-    string::{String, ToString},
-    vec::Vec,
-};
-use ark_bn254::Fq;
+use alloc::{boxed::Box, vec::Vec};
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, MontFp, PrimeField};
 use core::{array::from_fn, fmt};
@@ -59,7 +54,7 @@ pub enum ProofError {
     },
     // #[snafu(display("Other error: {message}"))]
     OtherError {
-        message: String,
+        message: &'static str,
     },
 }
 
@@ -146,7 +141,7 @@ impl ProofSpec for PlainProof {
 fn read_fr(data: &mut &[u8]) -> Result<Fr, ProofError> {
     const CHUNK_SIZE: usize = FIELD_ELEMENT_SIZE;
     let chunk = data.split_off(..CHUNK_SIZE).ok_or(ProofError::OtherError {
-        message: "Unable to read field element from data".to_string(),
+        message: "Unable to read field element from data",
     })?;
 
     Ok(Fr::from_be_bytes_mod_order(chunk))
@@ -158,7 +153,7 @@ fn read_evm_word(data: &mut &[u8]) -> Result<EVMWord, ProofError> {
     let chunk: EVMWord = data
         .split_off(..CHUNK_SIZE)
         .ok_or(ProofError::OtherError {
-            message: "Unable to read EVM word from data".to_string(),
+            message: "Unable to read EVM word from data",
         })?
         .try_into()
         .expect("Conversion should work at this point");
