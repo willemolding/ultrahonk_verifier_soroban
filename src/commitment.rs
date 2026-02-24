@@ -16,7 +16,7 @@
 
 use crate::constants::CONST_PROOF_SIZE_LOG_N;
 use alloc::vec::Vec;
-use ark_bn254_ext::Fr;
+use ark_bn254::Fr;
 use ark_ff::{batch_inversion, AdditiveGroup, Field, MontFp};
 
 const TWO: Fr = MontFp!("2");

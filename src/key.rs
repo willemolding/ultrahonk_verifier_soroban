@@ -25,7 +25,6 @@ use crate::{
     },
     EVMWord, G1, U256, VK_SIZE,
 };
-use ark_bn254_ext::CurveHooks;
 use core::fmt;
 use sha3::{digest::Update, Digest, Keccak256};
 use snafu::Snafu;
@@ -147,47 +146,47 @@ impl VkCommitmentField {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct VerificationKey<H: CurveHooks> {
+pub struct VerificationKey {
     // Misc Params
     pub log_circuit_size: u64,
     pub combined_input_size: u64, // Since bb 0.86.0, this is num_public_inputs + PAIRING_OBJECT_SIZE
     pub pub_inputs_offset: u64,
     // Selectors
-    pub q_m: G1<H>,
-    pub q_c: G1<H>,
-    pub q_l: G1<H>,
-    pub q_r: G1<H>,
-    pub q_o: G1<H>,
-    pub q_4: G1<H>,
-    pub q_lookup: G1<H>,     // Lookup
-    pub q_arith: G1<H>,      // Arithmetic widget
-    pub q_deltarange: G1<H>, // Delta Range sort
-    pub q_elliptic: G1<H>,
-    pub q_memory: G1<H>, // Memory
-    pub q_nnf: G1<H>,    // Non-Native Field
-    pub q_poseidon2external: G1<H>,
-    pub q_poseidon2internal: G1<H>,
+    pub q_m: G1,
+    pub q_c: G1,
+    pub q_l: G1,
+    pub q_r: G1,
+    pub q_o: G1,
+    pub q_4: G1,
+    pub q_lookup: G1,     // Lookup
+    pub q_arith: G1,      // Arithmetic widget
+    pub q_deltarange: G1, // Delta Range sort
+    pub q_elliptic: G1,
+    pub q_memory: G1, // Memory
+    pub q_nnf: G1,    // Non-Native Field
+    pub q_poseidon2external: G1,
+    pub q_poseidon2internal: G1,
     // Copy Constraints
-    pub s_1: G1<H>,
-    pub s_2: G1<H>,
-    pub s_3: G1<H>,
-    pub s_4: G1<H>,
+    pub s_1: G1,
+    pub s_2: G1,
+    pub s_3: G1,
+    pub s_4: G1,
     // Copy Identity
-    pub id_1: G1<H>,
-    pub id_2: G1<H>,
-    pub id_3: G1<H>,
-    pub id_4: G1<H>,
+    pub id_1: G1,
+    pub id_2: G1,
+    pub id_3: G1,
+    pub id_4: G1,
     // Precomputed Lookup Table
-    pub t_1: G1<H>,
-    pub t_2: G1<H>,
-    pub t_3: G1<H>,
-    pub t_4: G1<H>,
+    pub t_1: G1,
+    pub t_2: G1,
+    pub t_3: G1,
+    pub t_4: G1,
     // Fixed first and last
-    pub lagrange_first: G1<H>,
-    pub lagrange_last: G1<H>,
+    pub lagrange_first: G1,
+    pub lagrange_last: G1,
 }
 
-impl<H: CurveHooks> VerificationKey<H> {
+impl VerificationKey {
     // Only parses the log_circuit_size from the provided raw verification key without
     // doing any validation whatsoever on the rest of the verification key's fields.
     #[allow(unused)]
@@ -200,7 +199,7 @@ impl<H: CurveHooks> VerificationKey<H> {
     }
 }
 
-impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
+impl TryFrom<&[u8]> for VerificationKey {
     type Error = VerificationKeyError;
 
     fn try_from(mut raw_vk: &[u8]) -> Result<Self, Self::Error> {
@@ -228,7 +227,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
             _ => Err(VerificationKeyError::ParsingError)?,
         };
 
-        let q_m = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_m = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -236,7 +235,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_c = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_c = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -244,7 +243,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_l = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_l = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -252,7 +251,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_r = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_r = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -260,7 +259,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_o = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_o = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -268,7 +267,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_4 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_4 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -276,7 +275,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_lookup = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_lookup = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -284,7 +283,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_arith = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_arith = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -292,7 +291,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_deltarange = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_deltarange = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -300,7 +299,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_elliptic = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_elliptic = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -308,7 +307,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_memory = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_memory = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -316,7 +315,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_nnf = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_nnf = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -324,7 +323,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_poseidon2external = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_poseidon2external = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -332,7 +331,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let q_poseidon2internal = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let q_poseidon2internal = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -340,7 +339,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let s_1 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let s_1 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -348,7 +347,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let s_2 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let s_2 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -356,7 +355,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let s_3 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let s_3 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -364,7 +363,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let s_4 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let s_4 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -372,7 +371,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let id_1 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let id_1 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -380,7 +379,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let id_2 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let id_2 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -388,7 +387,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let id_3 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let id_3 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -396,7 +395,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let id_4 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let id_4 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -404,7 +403,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let t_1 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let t_1 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -412,7 +411,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let t_2 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let t_2 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -420,7 +419,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let t_3 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let t_3 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -428,7 +427,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let t_4 = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let t_4 = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -436,7 +435,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let lagrange_first = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let lagrange_first = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -444,7 +443,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
                 },
             }
         })?;
-        let lagrange_last = read_g1_by_splitting::<H>(&mut raw_vk).map_err(|e| {
+        let lagrange_last = read_g1_by_splitting(&mut raw_vk).map_err(|e| {
             VerificationKeyError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -489,7 +488,7 @@ impl<H: CurveHooks> TryFrom<&[u8]> for VerificationKey<H> {
     }
 }
 
-impl<H: CurveHooks> VerificationKey<H> {
+impl VerificationKey {
     /// Computes the hash of the verification key using Keccak256.
     pub fn compute_vk_hash(&self) -> EVMWord {
         Keccak256::new()

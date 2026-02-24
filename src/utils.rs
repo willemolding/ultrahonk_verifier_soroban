@@ -37,7 +37,7 @@ use crate::{
     EVMWord, Fq, Fq2, Fr, G2, U256,
 };
 use alloc::{format, string::String};
-use ark_bn254_ext::CurveHooks;
+// use ark_bn254_ext::CurveHooks;
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, PrimeField};
 
@@ -152,7 +152,7 @@ pub(crate) fn read_u256(bytes: &[u8]) -> Result<U256, ()> {
 }
 
 // Parse point in G1.
-pub(crate) fn read_g1_by_splitting<H: CurveHooks>(data: &mut &[u8]) -> Result<G1<H>, GroupError> {
+pub(crate) fn read_g1_by_splitting(data: &mut &[u8]) -> Result<G1, GroupError> {
     let chunk = data
         .split_off(..GROUP_ELEMENT_SIZE)
         .ok_or(GroupError::InvalidSliceLength {
@@ -192,7 +192,7 @@ pub(crate) fn read_g1_by_splitting<H: CurveHooks>(data: &mut &[u8]) -> Result<G1
 }
 
 // Parse point in G2.
-pub(crate) fn read_g2<H: CurveHooks>(data: &[u8]) -> Result<G2<H>, ()> {
+pub(crate) fn read_g2(data: &[u8]) -> Result<G2, ()> {
     if data.len() != 128 {
         return Err(());
     }
@@ -208,7 +208,7 @@ pub(crate) fn read_g2<H: CurveHooks>(data: &[u8]) -> Result<G2<H>, ()> {
     let x = Fq2::new(x_c0, x_c1);
     let y = Fq2::new(y_c0, y_c1);
 
-    Ok(G2::<H>::new(x, y))
+    Ok(G2::new(x, y))
 }
 
 // Utility function for parsing points in G2.

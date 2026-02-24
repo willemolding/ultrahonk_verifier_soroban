@@ -23,7 +23,7 @@ use crate::{
     utils::IntoBEBytes32,
     EVMWord, ParsedProof, Pubs,
 };
-use ark_bn254_ext::{CurveHooks, Fr};
+use ark_bn254::Fr;
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field, PrimeField};
 use sha3::{Digest, Keccak256};
@@ -259,14 +259,14 @@ impl RelationParametersChallenges {
 }
 
 /// Generate the full transcript for a given proof.
-pub(crate) fn generate_transcript<H: CurveHooks>(
-    parsed_proof: &ParsedProof<H>,
+pub(crate) fn generate_transcript(
+    parsed_proof: &ParsedProof,
     public_inputs: &Pubs,
     vk_hash: &EVMWord,
     log_n: u64,
 ) -> Transcript {
     let (rp_challenges, previous_challenge) =
-        generate_relation_parameters_challenges::<H>(parsed_proof, public_inputs, vk_hash);
+        generate_relation_parameters_challenges(parsed_proof, public_inputs, vk_hash);
     let (alphas, previous_challenge) = generate_alpha_challenges(previous_challenge, parsed_proof);
     let (gate_challenges, mut previous_challenge) =
         generate_gate_challenges(previous_challenge, log_n);
@@ -327,14 +327,14 @@ fn split_challenge(challenge: Fr) -> (Fr, Fr) {
 }
 
 // Generate the relation parameters challenges: eta, eta_two, eta_three, beta, gamma
-fn generate_relation_parameters_challenges<H: CurveHooks>(
-    parsed_proof: &ParsedProof<H>,
+fn generate_relation_parameters_challenges(
+    parsed_proof: &ParsedProof,
     public_inputs: &Pubs,
     vk_hash: &EVMWord,
 ) -> (RelationParametersChallenges, Fr) {
     // Round 0
     let [eta, eta_two, eta_three, previous_challenge] =
-        generate_eta_challenge::<H>(parsed_proof, public_inputs, vk_hash);
+        generate_eta_challenge(parsed_proof, public_inputs, vk_hash);
 
     // Round 1
     let [beta, gamma, next_previous_challenge] =
@@ -347,8 +347,8 @@ fn generate_relation_parameters_challenges<H: CurveHooks>(
 }
 
 // Generate the eta challenges
-fn generate_eta_challenge<H: CurveHooks>(
-    parsed_proof: &ParsedProof<H>,
+fn generate_eta_challenge(
+    parsed_proof: &ParsedProof,
     public_inputs: &Pubs,
     vk_hash: &EVMWord,
 ) -> [Fr; 4] {
@@ -441,9 +441,9 @@ fn generate_eta_challenge<H: CurveHooks>(
 }
 
 // Generate beta and gamma challenges
-fn generate_beta_and_gamma_challenges<H: CurveHooks>(
+fn generate_beta_and_gamma_challenges(
     previous_challenge: Fr,
-    parsed_proof: &ParsedProof<H>,
+    parsed_proof: &ParsedProof,
 ) -> [Fr; 3] {
     let round1: EVMWord = Keccak256::new()
         .chain_update(previous_challenge.into_be_bytes32())
@@ -499,9 +499,9 @@ fn generate_beta_and_gamma_challenges<H: CurveHooks>(
 }
 
 // Alpha challenges non-linearize the gate contributions
-fn generate_alpha_challenges<H: CurveHooks>(
+fn generate_alpha_challenges(
     previous_challenge: Fr,
-    parsed_proof: &ParsedProof<H>,
+    parsed_proof: &ParsedProof,
 ) -> ([Fr; NUMBER_OF_ALPHAS], Fr) {
     let mut alphas = [Fr::ZERO; NUMBER_OF_ALPHAS];
 
@@ -574,10 +574,7 @@ fn generate_gate_challenges(
 }
 
 // Function exclusive to `ZKProof`.
-fn generate_libra_challenge<H: CurveHooks>(
-    previous_challenge: Fr,
-    zk_proof: &ZKProof<H>,
-) -> (Fr, Fr) {
+fn generate_libra_challenge(previous_challenge: Fr, zk_proof: &ZKProof) -> (Fr, Fr) {
     let hash: EVMWord = Keccak256::new()
         .chain_update(previous_challenge.into_be_bytes32())
         .chain_update(
@@ -603,8 +600,8 @@ fn generate_libra_challenge<H: CurveHooks>(
 }
 
 // Generate the sumcheck u challenges
-fn generate_sumcheck_challenges<H: CurveHooks>(
-    parsed_proof: &ParsedProof<H>,
+fn generate_sumcheck_challenges(
+    parsed_proof: &ParsedProof,
     mut previous_challenge: Fr,
     log_n: u64,
 ) -> ([Fr; CONST_PROOF_SIZE_LOG_N], Fr) {
@@ -633,10 +630,7 @@ fn generate_sumcheck_challenges<H: CurveHooks>(
 }
 
 // Generate the rho challenges
-fn generate_rho_challenge<H: CurveHooks>(
-    parsed_proof: &ParsedProof<H>,
-    previous_challenge: Fr,
-) -> (Fr, Fr) {
+fn generate_rho_challenge(parsed_proof: &ParsedProof, previous_challenge: Fr) -> (Fr, Fr) {
     let mut hasher = Keccak256::new();
 
     hasher.update(previous_challenge.into_be_bytes32());
@@ -684,8 +678,8 @@ fn generate_rho_challenge<H: CurveHooks>(
 }
 
 // Generate the gemini r challenge
-fn generate_gemini_r_challenge<H: CurveHooks>(
-    parsed_proof: &ParsedProof<H>,
+fn generate_gemini_r_challenge(
+    parsed_proof: &ParsedProof,
     previous_challenge: Fr,
     log_n: u64,
 ) -> (Fr, Fr) {
@@ -718,8 +712,8 @@ fn generate_gemini_r_challenge<H: CurveHooks>(
 }
 
 // Generate the shplonk nu challenge
-fn generate_shplonk_nu_challenge<H: CurveHooks>(
-    parsed_proof: &ParsedProof<H>,
+fn generate_shplonk_nu_challenge(
+    parsed_proof: &ParsedProof,
     prev_challenge: Fr,
     log_n: u64,
 ) -> (Fr, Fr) {
@@ -747,10 +741,7 @@ fn generate_shplonk_nu_challenge<H: CurveHooks>(
 }
 
 // Generate the shplonk z challenge
-fn generate_shplonk_z_challenge<H: CurveHooks>(
-    parsed_proof: &ParsedProof<H>,
-    previous_challenge: Fr,
-) -> (Fr, Fr) {
+fn generate_shplonk_z_challenge(parsed_proof: &ParsedProof, previous_challenge: Fr) -> (Fr, Fr) {
     let hash: EVMWord = Keccak256::new()
         .chain_update(previous_challenge.into_be_bytes32())
         .chain_update(

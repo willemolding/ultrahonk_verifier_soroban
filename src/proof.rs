@@ -33,7 +33,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use ark_bn254_ext::{CurveHooks, Fq};
+use ark_bn254::Fq;
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, MontFp, PrimeField};
 use core::{array::from_fn, fmt};
@@ -74,7 +74,7 @@ pub(crate) trait ProofSpec {
     const LAGRANGE_DENOMINATORS: &'static [Fr];
 }
 
-impl<H: CurveHooks> ProofSpec for ZKProof<H> {
+impl ProofSpec for ZKProof {
     const SHIFTED_COMMITMENTS_START: usize = 30;
     const BATCHED_RELATION_PARTIAL_LENGTH: usize = ZK_BATCHED_RELATION_PARTIAL_LENGTH;
     const NUMBER_UNSHIFTED: usize = NUMBER_UNSHIFTED_ZK;
@@ -93,7 +93,7 @@ impl<H: CurveHooks> ProofSpec for ZKProof<H> {
     ];
 }
 
-impl<H: CurveHooks> ProofSpec for PlainProof<H> {
+impl ProofSpec for PlainProof {
     const SHIFTED_COMMITMENTS_START: usize = 29;
     const BATCHED_RELATION_PARTIAL_LENGTH: usize = BATCHED_RELATION_PARTIAL_LENGTH;
     const NUMBER_UNSHIFTED: usize = NUMBER_UNSHIFTED;
@@ -172,98 +172,98 @@ impl fmt::Display for ProofCommitmentField {
     }
 }
 
-pub(crate) trait CommonProofData<H: CurveHooks> {
+pub(crate) trait CommonProofData {
     // getters
     fn pairing_point_object(&self) -> &[EVMWord; PAIRING_POINTS_SIZE];
-    fn w1(&self) -> &G1<H>;
-    fn w2(&self) -> &G1<H>;
-    fn w3(&self) -> &G1<H>;
-    fn w4(&self) -> &G1<H>;
-    fn lookup_read_counts(&self) -> &G1<H>;
-    fn lookup_read_tags(&self) -> &G1<H>;
-    fn lookup_inverses(&self) -> &G1<H>;
-    fn z_perm(&self) -> &G1<H>;
+    fn w1(&self) -> &G1;
+    fn w2(&self) -> &G1;
+    fn w3(&self) -> &G1;
+    fn w4(&self) -> &G1;
+    fn lookup_read_counts(&self) -> &G1;
+    fn lookup_read_tags(&self) -> &G1;
+    fn lookup_inverses(&self) -> &G1;
+    fn z_perm(&self) -> &G1;
     fn sumcheck_univariates<'a>(&'a self) -> Box<dyn Iterator<Item = &'a [Fr]> + 'a>;
     fn sumcheck_evaluations(&self) -> &[Fr];
-    fn gemini_fold_comms(&self) -> &Vec<G1<H>>;
+    fn gemini_fold_comms(&self) -> &Vec<G1>;
     fn gemini_a_evaluations(&self) -> &[Fr; CONST_PROOF_SIZE_LOG_N];
-    fn shplonk_q(&self) -> &G1<H>;
-    fn kzg_quotient(&self) -> &G1<H>;
+    fn shplonk_q(&self) -> &G1;
+    fn kzg_quotient(&self) -> &G1;
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct ZKProof<H: CurveHooks> {
+pub struct ZKProof {
     // Pairing point object
     pub pairing_point_object: [EVMWord; PAIRING_POINTS_SIZE],
     // Commitments to wire polynomials
-    pub w1: G1<H>,
-    pub w2: G1<H>,
-    pub w3: G1<H>,
-    pub w4: G1<H>,
+    pub w1: G1,
+    pub w2: G1,
+    pub w3: G1,
+    pub w4: G1,
     // Commitments to logup witness polynomials
-    pub lookup_read_counts: G1<H>,
-    pub lookup_read_tags: G1<H>,
-    pub lookup_inverses: G1<H>,
+    pub lookup_read_counts: G1,
+    pub lookup_read_tags: G1,
+    pub lookup_inverses: G1,
     // Commitment to grand permutation polynomial
-    pub z_perm: G1<H>,
-    pub libra_commitments: [G1<H>; NUM_LIBRA_COMMITMENTS],
+    pub z_perm: G1,
+    pub libra_commitments: [G1; NUM_LIBRA_COMMITMENTS],
     // Sumcheck
     pub libra_sum: Fr,
     pub sumcheck_univariates: Vec<Vec<Fr>>,
     pub sumcheck_evaluations: [Fr; NUMBER_OF_ENTITIES_ZK], // sumcheck_evaluations[0] == gemini_masking_eval
     pub libra_evaluation: Fr,
     // ZK
-    pub gemini_masking_poly: G1<H>,
+    pub gemini_masking_poly: G1,
     // Shplemini
-    pub gemini_fold_comms: Vec<G1<H>>,
+    pub gemini_fold_comms: Vec<G1>,
     pub gemini_a_evaluations: [Fr; CONST_PROOF_SIZE_LOG_N],
     pub libra_poly_evals: [Fr; NUM_LIBRA_EVALUATIONS],
-    pub shplonk_q: G1<H>,
-    pub kzg_quotient: G1<H>,
+    pub shplonk_q: G1,
+    pub kzg_quotient: G1,
 }
 
-impl<H: CurveHooks> CommonProofData<H> for ZKProof<H> {
+impl CommonProofData for ZKProof {
     fn pairing_point_object(&self) -> &[EVMWord; PAIRING_POINTS_SIZE] {
         &self.pairing_point_object
     }
 
-    fn w1(&self) -> &G1<H> {
+    fn w1(&self) -> &G1 {
         &self.w1
     }
 
-    fn w2(&self) -> &G1<H> {
+    fn w2(&self) -> &G1 {
         &self.w2
     }
 
-    fn w3(&self) -> &G1<H> {
+    fn w3(&self) -> &G1 {
         &self.w3
     }
 
-    fn w4(&self) -> &G1<H> {
+    fn w4(&self) -> &G1 {
         &self.w4
     }
 
-    fn lookup_read_counts(&self) -> &G1<H> {
+    fn lookup_read_counts(&self) -> &G1 {
         &self.lookup_read_counts
     }
 
-    fn lookup_read_tags(&self) -> &G1<H> {
+    fn lookup_read_tags(&self) -> &G1 {
         &self.lookup_read_tags
     }
 
-    fn lookup_inverses(&self) -> &G1<H> {
+    fn lookup_inverses(&self) -> &G1 {
         &self.lookup_inverses
     }
 
-    fn z_perm(&self) -> &G1<H> {
+    fn z_perm(&self) -> &G1 {
         &self.z_perm
     }
 
-    fn shplonk_q(&self) -> &G1<H> {
+    fn shplonk_q(&self) -> &G1 {
         &self.shplonk_q
     }
 
-    fn kzg_quotient(&self) -> &G1<H> {
+    fn kzg_quotient(&self) -> &G1 {
         &self.kzg_quotient
     }
 
@@ -275,7 +275,7 @@ impl<H: CurveHooks> CommonProofData<H> for ZKProof<H> {
         &self.sumcheck_evaluations
     }
 
-    fn gemini_fold_comms(&self) -> &Vec<G1<H>> {
+    fn gemini_fold_comms(&self) -> &Vec<G1> {
         &self.gemini_fold_comms
     }
 
@@ -284,7 +284,7 @@ impl<H: CurveHooks> CommonProofData<H> for ZKProof<H> {
     }
 }
 
-impl<H: CurveHooks> ZKProof<H> {
+impl ZKProof {
     // Calculate proof length in EVM words based on log_n (matching UltraKeccakZKFlavor formula)
     pub(crate) fn calculate_proof_word_len(log_n: u64) -> usize {
         // Witness and Libra commitments
@@ -338,7 +338,7 @@ impl<H: CurveHooks> ZKProof<H> {
         });
 
         // Gemini masking polynomial commitment (sent first in ZK flavors, right after pairing points)
-        let gemini_masking_poly = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        let gemini_masking_poly = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -348,7 +348,7 @@ impl<H: CurveHooks> ZKProof<H> {
         })?;
 
         // Commitments
-        let w1 = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        let w1 = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -356,7 +356,7 @@ impl<H: CurveHooks> ZKProof<H> {
                 },
             }
         })?;
-        let w2 = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        let w2 = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -364,7 +364,7 @@ impl<H: CurveHooks> ZKProof<H> {
                 },
             }
         })?;
-        let w3 = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        let w3 = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -373,7 +373,7 @@ impl<H: CurveHooks> ZKProof<H> {
             }
         })?;
         // Lookup / Permutation Helper Commitments
-        let lookup_read_counts = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        let lookup_read_counts = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -381,7 +381,7 @@ impl<H: CurveHooks> ZKProof<H> {
                 },
             }
         })?;
-        let lookup_read_tags = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        let lookup_read_tags = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -389,7 +389,7 @@ impl<H: CurveHooks> ZKProof<H> {
                 },
             }
         })?;
-        let w4 = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        let w4 = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -397,7 +397,7 @@ impl<H: CurveHooks> ZKProof<H> {
                 },
             }
         })?;
-        let lookup_inverses = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        let lookup_inverses = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -405,7 +405,7 @@ impl<H: CurveHooks> ZKProof<H> {
                 },
             }
         })?;
-        let z_perm = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        let z_perm = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -414,9 +414,9 @@ impl<H: CurveHooks> ZKProof<H> {
             }
         })?;
 
-        let mut libra_commitments = [G1::<H>::default(); NUM_LIBRA_COMMITMENTS];
+        let mut libra_commitments = [G1::default(); NUM_LIBRA_COMMITMENTS];
 
-        libra_commitments[0] = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        libra_commitments[0] = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -447,7 +447,7 @@ impl<H: CurveHooks> ZKProof<H> {
 
         let libra_evaluation = read_fr(&mut proof_bytes)?;
 
-        libra_commitments[1] = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        libra_commitments[1] = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -455,7 +455,7 @@ impl<H: CurveHooks> ZKProof<H> {
                 },
             }
         })?;
-        libra_commitments[2] = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        libra_commitments[2] = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -469,7 +469,7 @@ impl<H: CurveHooks> ZKProof<H> {
         let mut gemini_fold_comms = Vec::with_capacity(log_n as usize - 1);
 
         for i in 0..(log_n as usize - 1) {
-            gemini_fold_comms.push(read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+            gemini_fold_comms.push(read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
                 ProofError::GroupConversionError {
                     conv_error: ConversionError {
                         group: e,
@@ -494,7 +494,7 @@ impl<H: CurveHooks> ZKProof<H> {
         });
 
         // Shplonk
-        let shplonk_q = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        let shplonk_q = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -504,7 +504,7 @@ impl<H: CurveHooks> ZKProof<H> {
         })?;
 
         // KZG
-        let kzg_quotient = read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+        let kzg_quotient = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
                 conv_error: ConversionError {
                     group: e,
@@ -539,73 +539,73 @@ impl<H: CurveHooks> ZKProof<H> {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct PlainProof<H: CurveHooks> {
+pub struct PlainProof {
     // Pairing point object
     pub pairing_point_object: [EVMWord; PAIRING_POINTS_SIZE],
     // Commitments to wire polynomials
-    pub w1: G1<H>,
-    pub w2: G1<H>,
-    pub w3: G1<H>,
-    pub w4: G1<H>,
+    pub w1: G1,
+    pub w2: G1,
+    pub w3: G1,
+    pub w4: G1,
     // Commitments to logup witness polynomials
-    pub lookup_read_counts: G1<H>,
-    pub lookup_read_tags: G1<H>,
-    pub lookup_inverses: G1<H>,
+    pub lookup_read_counts: G1,
+    pub lookup_read_tags: G1,
+    pub lookup_inverses: G1,
     // Lookup helpers - Permutations
-    pub z_perm: G1<H>,
+    pub z_perm: G1,
     // Sumcheck
     pub sumcheck_univariates: Vec<Vec<Fr>>,
     pub sumcheck_evaluations: [Fr; NUMBER_OF_ENTITIES],
     // Shplemini
-    pub gemini_fold_comms: Vec<G1<H>>,
+    pub gemini_fold_comms: Vec<G1>,
     pub gemini_a_evaluations: [Fr; CONST_PROOF_SIZE_LOG_N],
-    pub shplonk_q: G1<H>,
-    pub kzg_quotient: G1<H>,
+    pub shplonk_q: G1,
+    pub kzg_quotient: G1,
 }
 
-impl<H: CurveHooks> CommonProofData<H> for PlainProof<H> {
+impl CommonProofData for PlainProof {
     // getters
     fn pairing_point_object(&self) -> &[EVMWord; PAIRING_POINTS_SIZE] {
         &self.pairing_point_object
     }
 
-    fn w1(&self) -> &G1<H> {
+    fn w1(&self) -> &G1 {
         &self.w1
     }
 
-    fn w2(&self) -> &G1<H> {
+    fn w2(&self) -> &G1 {
         &self.w2
     }
 
-    fn w3(&self) -> &G1<H> {
+    fn w3(&self) -> &G1 {
         &self.w3
     }
 
-    fn w4(&self) -> &G1<H> {
+    fn w4(&self) -> &G1 {
         &self.w4
     }
 
-    fn lookup_read_counts(&self) -> &G1<H> {
+    fn lookup_read_counts(&self) -> &G1 {
         &self.lookup_read_counts
     }
 
-    fn lookup_read_tags(&self) -> &G1<H> {
+    fn lookup_read_tags(&self) -> &G1 {
         &self.lookup_read_tags
     }
 
-    fn lookup_inverses(&self) -> &G1<H> {
+    fn lookup_inverses(&self) -> &G1 {
         &self.lookup_inverses
     }
 
-    fn z_perm(&self) -> &G1<H> {
+    fn z_perm(&self) -> &G1 {
         &self.z_perm
     }
 
-    fn shplonk_q(&self) -> &G1<H> {
+    fn shplonk_q(&self) -> &G1 {
         &self.shplonk_q
     }
 
-    fn kzg_quotient(&self) -> &G1<H> {
+    fn kzg_quotient(&self) -> &G1 {
         &self.kzg_quotient
     }
 
@@ -617,7 +617,7 @@ impl<H: CurveHooks> CommonProofData<H> for PlainProof<H> {
         &self.sumcheck_evaluations
     }
 
-    fn gemini_fold_comms(&self) -> &Vec<G1<H>> {
+    fn gemini_fold_comms(&self) -> &Vec<G1> {
         &self.gemini_fold_comms
     }
 
@@ -626,7 +626,7 @@ impl<H: CurveHooks> CommonProofData<H> for PlainProof<H> {
     }
 }
 
-impl<H: CurveHooks> PlainProof<H> {
+impl PlainProof {
     // Calculate proof length in EVM words based on log_n (matching UltraKeccakFlavor formula)
     pub(crate) fn calculate_proof_word_len(log_n: u64) -> usize {
         // Witness commitments
@@ -762,7 +762,7 @@ impl<H: CurveHooks> PlainProof<H> {
         let mut gemini_fold_comms = Vec::with_capacity(log_n as usize - 1);
 
         for i in 0..(log_n as usize - 1) {
-            gemini_fold_comms.push(read_g1_by_splitting::<H>(&mut proof_bytes).map_err(|e| {
+            gemini_fold_comms.push(read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
                 ProofError::GroupConversionError {
                     conv_error: ConversionError {
                         group: e,
@@ -823,54 +823,54 @@ impl<H: CurveHooks> PlainProof<H> {
 }
 
 #[derive(Debug)]
-pub(crate) enum ParsedProof<H: CurveHooks> {
-    Plain(Box<PlainProof<H>>),
-    ZK(Box<ZKProof<H>>),
+pub(crate) enum ParsedProof {
+    Plain(Box<PlainProof>),
+    ZK(Box<ZKProof>),
 }
 
-impl<H: CurveHooks> ParsedProof<H> {
+impl ParsedProof {
     // Get the baricentric lagrange denominators for the proof structure.
     pub(crate) fn get_baricentric_lagrange_denominators(&self) -> &'static [Fr] {
         match self {
-            ParsedProof::ZK(_) => ZKProof::<H>::LAGRANGE_DENOMINATORS,
-            ParsedProof::Plain(_) => PlainProof::<H>::LAGRANGE_DENOMINATORS,
+            ParsedProof::ZK(_) => ZKProof::LAGRANGE_DENOMINATORS,
+            ParsedProof::Plain(_) => PlainProof::LAGRANGE_DENOMINATORS,
         }
     }
 
     // Get the length of batched relation partials in the proof structure.
     pub(crate) fn get_batched_relation_partial_length(&self) -> usize {
         match self {
-            ParsedProof::ZK(_) => ZKProof::<H>::BATCHED_RELATION_PARTIAL_LENGTH,
-            ParsedProof::Plain(_) => PlainProof::<H>::BATCHED_RELATION_PARTIAL_LENGTH,
+            ParsedProof::ZK(_) => ZKProof::BATCHED_RELATION_PARTIAL_LENGTH,
+            ParsedProof::Plain(_) => PlainProof::BATCHED_RELATION_PARTIAL_LENGTH,
         }
     }
 
     // Get the starting index of shifted commitments in the proof structure.
     pub(crate) fn get_shifted_commitments_start(&self) -> usize {
         match self {
-            ParsedProof::ZK(_) => ZKProof::<H>::SHIFTED_COMMITMENTS_START,
-            ParsedProof::Plain(_) => PlainProof::<H>::SHIFTED_COMMITMENTS_START,
+            ParsedProof::ZK(_) => ZKProof::SHIFTED_COMMITMENTS_START,
+            ParsedProof::Plain(_) => PlainProof::SHIFTED_COMMITMENTS_START,
         }
     }
 
     // Get the number of unshifted elements.
     pub(crate) fn get_number_of_unshifted(&self) -> usize {
         match self {
-            ParsedProof::ZK(_) => ZKProof::<H>::NUMBER_UNSHIFTED,
-            ParsedProof::Plain(_) => PlainProof::<H>::NUMBER_UNSHIFTED,
+            ParsedProof::ZK(_) => ZKProof::NUMBER_UNSHIFTED,
+            ParsedProof::Plain(_) => PlainProof::NUMBER_UNSHIFTED,
         }
     }
 
     // Get the number of entities.
     pub(crate) fn get_number_of_entities(&self) -> usize {
         match self {
-            ParsedProof::ZK(_) => ZKProof::<H>::NUMBER_OF_ENTITIES,
-            ParsedProof::Plain(_) => PlainProof::<H>::NUMBER_OF_ENTITIES,
+            ParsedProof::ZK(_) => ZKProof::NUMBER_OF_ENTITIES,
+            ParsedProof::Plain(_) => PlainProof::NUMBER_OF_ENTITIES,
         }
     }
 }
 
-impl<H: CurveHooks> CommonProofData<H> for ParsedProof<H> {
+impl CommonProofData for ParsedProof {
     // getters
     fn pairing_point_object(&self) -> &[EVMWord; PAIRING_POINTS_SIZE] {
         match self {
@@ -879,70 +879,70 @@ impl<H: CurveHooks> CommonProofData<H> for ParsedProof<H> {
         }
     }
 
-    fn w1(&self) -> &G1<H> {
+    fn w1(&self) -> &G1 {
         match self {
             Self::ZK(p) => p.w1(),
             Self::Plain(p) => p.w1(),
         }
     }
 
-    fn w2(&self) -> &G1<H> {
+    fn w2(&self) -> &G1 {
         match self {
             Self::ZK(p) => p.w2(),
             Self::Plain(p) => p.w2(),
         }
     }
 
-    fn w3(&self) -> &G1<H> {
+    fn w3(&self) -> &G1 {
         match self {
             Self::ZK(p) => p.w3(),
             Self::Plain(p) => p.w3(),
         }
     }
 
-    fn w4(&self) -> &G1<H> {
+    fn w4(&self) -> &G1 {
         match self {
             Self::ZK(p) => p.w4(),
             Self::Plain(p) => p.w4(),
         }
     }
 
-    fn lookup_read_counts(&self) -> &G1<H> {
+    fn lookup_read_counts(&self) -> &G1 {
         match self {
             Self::ZK(p) => p.lookup_read_counts(),
             Self::Plain(p) => p.lookup_read_counts(),
         }
     }
 
-    fn lookup_read_tags(&self) -> &G1<H> {
+    fn lookup_read_tags(&self) -> &G1 {
         match self {
             Self::ZK(p) => p.lookup_read_tags(),
             Self::Plain(p) => p.lookup_read_tags(),
         }
     }
 
-    fn lookup_inverses(&self) -> &G1<H> {
+    fn lookup_inverses(&self) -> &G1 {
         match self {
             Self::ZK(p) => p.lookup_inverses(),
             Self::Plain(p) => p.lookup_inverses(),
         }
     }
 
-    fn z_perm(&self) -> &G1<H> {
+    fn z_perm(&self) -> &G1 {
         match self {
             Self::ZK(p) => p.z_perm(),
             Self::Plain(p) => p.z_perm(),
         }
     }
 
-    fn shplonk_q(&self) -> &G1<H> {
+    fn shplonk_q(&self) -> &G1 {
         match self {
             Self::ZK(p) => p.shplonk_q(),
             Self::Plain(p) => p.shplonk_q(),
         }
     }
 
-    fn kzg_quotient(&self) -> &G1<H> {
+    fn kzg_quotient(&self) -> &G1 {
         match self {
             Self::ZK(p) => p.kzg_quotient(),
             Self::Plain(p) => p.kzg_quotient(),
@@ -963,7 +963,7 @@ impl<H: CurveHooks> CommonProofData<H> for ParsedProof<H> {
         }
     }
 
-    fn gemini_fold_comms(&self) -> &Vec<G1<H>> {
+    fn gemini_fold_comms(&self) -> &Vec<G1> {
         match self {
             Self::ZK(p) => p.gemini_fold_comms(),
             Self::Plain(p) => p.gemini_fold_comms(),
@@ -979,9 +979,9 @@ impl<H: CurveHooks> CommonProofData<H> for ParsedProof<H> {
 }
 
 // Convert a single G1 point from 8 EVM words.
-fn convert_g1_point_from_words<H: CurveHooks>(
+fn convert_g1_point_from_words(
     words: &[EVMWord], // words must be an 8-element slice
-) -> Result<G1<H>, ProofError> {
+) -> Result<G1, ProofError> {
     // Combine 4 words for the x-coordinate
     let mut x_coord = words[0].into_u256();
     x_coord |= words[1].into_u256() << 68;
@@ -1049,9 +1049,9 @@ fn convert_g1_point_from_words<H: CurveHooks>(
 // Convert pairing points from EVM words to G1 points.
 // The first 8 EVM words correspond to the x and y coordinates of the first G1 point,
 // and the next 8 EVM words correspond to the x and y coordinates of the second G1 point.
-pub(crate) fn convert_pairing_points_to_g1<H: CurveHooks>(
+pub(crate) fn convert_pairing_points_to_g1(
     pairing_points: &[EVMWord; PAIRING_POINTS_SIZE],
-) -> Result<(G1<H>, G1<H>), ProofError> {
+) -> Result<(G1, G1), ProofError> {
     let p0 = convert_g1_point_from_words(&pairing_points[0..8])?;
     let p1 = convert_g1_point_from_words(&pairing_points[8..16])?;
     Ok((p0, p1))
@@ -1065,11 +1065,11 @@ pub(crate) fn convert_pairing_points_to_g1<H: CurveHooks>(
 /// * `proof_rhs` - The right proof point.
 /// # Returns
 /// * `Fr` - The generated recursion separator as a field element.
-pub(crate) fn generate_recursion_separator<H: CurveHooks>(
-    acc_lhs: &G1<H>,
-    acc_rhs: &G1<H>,
-    proof_lhs: &G1<H>,
-    proof_rhs: &G1<H>,
+pub(crate) fn generate_recursion_separator(
+    acc_lhs: &G1,
+    acc_rhs: &G1,
+    proof_lhs: &G1,
+    proof_rhs: &G1,
 ) -> Fr {
     // hash the proof aggregated X
     // hash the proof aggregated Y

@@ -50,7 +50,7 @@ use crate::{
     utils::{read_g2, IntoBEBytes32},
 };
 use alloc::{boxed::Box, format, string::ToString, vec::Vec};
-use ark_bn254_ext::CurveHooks;
+// use ark_bn254_ext::CurveHooks;
 use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
 use ark_ff::{batch_inversion, AdditiveGroup, Field, One, PrimeField};
 use ark_models_ext::bn::{G1Prepared, G2Prepared};
@@ -66,16 +66,12 @@ pub type PublicInput = [u8; PUB_SIZE];
 pub type Pubs = [PublicInput];
 
 /// Verifies a proof against a verification key and public inputs.
-pub fn verify<H: CurveHooks + Default>(
-    vk_bytes: &[u8],
-    proof: &ProofType,
-    pubs: &Pubs,
-) -> Result<(), VerifyError> {
+pub fn verify(vk_bytes: &[u8], proof: &ProofType, pubs: &Pubs) -> Result<(), VerifyError> {
     // Parse VK
-    let vk = VerificationKey::<H>::try_from(vk_bytes).map_err(|_| VerifyError::KeyError)?;
+    let vk = VerificationKey::try_from(vk_bytes).map_err(|_| VerifyError::KeyError)?;
 
     // Perform preliminary checks on inputs
-    check_proof_byte_len::<H>(proof, vk.log_circuit_size)?;
+    check_proof_byte_len(proof, vk.log_circuit_size)?;
     check_public_input_number(&vk, pubs)?;
 
     // Parse proof
@@ -100,9 +96,9 @@ pub fn verify<H: CurveHooks + Default>(
 }
 
 // Core verification logic.
-fn verify_internal<H: CurveHooks>(
-    vk: &VerificationKey<H>,
-    parsed_proof: &ParsedProof<H>,
+fn verify_internal(
+    vk: &VerificationKey,
+    parsed_proof: &ParsedProof,
     public_inputs: &Pubs,
 ) -> Result<(), VerifyError> {
     // Compute the verification key hash
@@ -137,10 +133,7 @@ fn verify_internal<H: CurveHooks>(
 }
 
 // Checks that number of public inputs in the vk, matches the actual length of the PI list.
-fn check_public_input_number<H: CurveHooks>(
-    vk: &VerificationKey<H>,
-    pubs: &Pubs,
-) -> Result<(), VerifyError> {
+fn check_public_input_number(vk: &VerificationKey, pubs: &Pubs) -> Result<(), VerifyError> {
     // In bb 0.86.0, public inputs and the pairing point object are combined under the hood
     // see: https://github.com/AztecProtocol/barretenberg/issues/1331
     if vk.combined_input_size - PAIRING_POINTS_SIZE as u64 != pubs.len() as u64 {
@@ -157,8 +150,8 @@ fn check_public_input_number<H: CurveHooks>(
 }
 
 // Verify the sumcheck part of the proof.
-fn verify_sumcheck<H: CurveHooks>(
-    parsed_proof: &ParsedProof<H>,
+fn verify_sumcheck(
+    parsed_proof: &ParsedProof,
     tp: &Transcript,
     log_circuit_size: u64,
     public_inputs_delta: Fr,
@@ -244,10 +237,10 @@ fn verify_sumcheck<H: CurveHooks>(
 }
 
 // Return the new target sum for the next sumcheck round.
-fn compute_next_target_sum<H: CurveHooks>(
+fn compute_next_target_sum(
     round_univariates: &[Fr],
     round_challenge: Fr,
-    parsed_proof: &ParsedProof<H>,
+    parsed_proof: &ParsedProof,
 ) -> Result<Fr, &'static str> {
     let baricentric_lagrange_denominators = parsed_proof.get_baricentric_lagrange_denominators();
 
@@ -285,9 +278,9 @@ fn compute_next_target_sum<H: CurveHooks>(
 }
 
 // Verify the shplemini part of the proof.
-fn verify_shplemini<H: CurveHooks>(
-    parsed_proof: &ParsedProof<H>,
-    vk: &VerificationKey<H>,
+fn verify_shplemini(
+    parsed_proof: &ParsedProof,
+    vk: &VerificationKey,
     tp: &Transcript,
 ) -> Result<(), ProofError> {
     // Compute vector (r, r², ..., r²⁽ⁿ⁻¹⁾), where n := log_circuit_size
@@ -305,7 +298,7 @@ fn verify_shplemini<H: CurveHooks>(
     let mut scalars = Vec::with_capacity(msm_size);
     scalars.resize(msm_size, Fr::ZERO);
     let mut commitments = Vec::with_capacity(msm_size);
-    commitments.resize(msm_size, G1::<H>::default());
+    commitments.resize(msm_size, G1::default());
 
     // NOTE: Can use batching here to go from 2 inversions to 1 inversion + 3 multiplications
     // but the benefit is probably not worth it.
@@ -520,7 +513,7 @@ fn verify_shplemini<H: CurveHooks>(
         }
     }
 
-    commitments[boundary] = G1::<H>::generator(); // (1, 2)
+    commitments[boundary] = G1::generator(); // (1, 2)
     scalars[boundary] = constant_term_accumulator;
     boundary += 1;
 
@@ -561,13 +554,11 @@ fn verify_shplemini<H: CurveHooks>(
     ];
 
     let g2_points = [
-        G2Prepared::from(read_g2::<H>(&SRS_G2).expect("Parsing the SRS point should always work")),
-        G2Prepared::from(
-            read_g2::<H>(&SRS_G2_VK).expect("Parsing the SRS point should always work"),
-        ),
+        G2Prepared::from(read_g2(&SRS_G2).expect("Parsing the SRS point should always work")),
+        G2Prepared::from(read_g2(&SRS_G2_VK).expect("Parsing the SRS point should always work")),
     ];
 
-    let product = Bn254::<H>::multi_pairing(g1_points, g2_points);
+    let product = Bn254::multi_pairing(g1_points, g2_points);
 
     if product.0.is_one() {
         Ok(())
@@ -659,11 +650,11 @@ fn check_evals_consistency(
 }
 
 // Check that the proof byte length matches the expected size for the given log_n.
-fn check_proof_byte_len<H: CurveHooks>(proof: &ProofType, log_n: u64) -> Result<(), VerifyError> {
+fn check_proof_byte_len(proof: &ProofType, log_n: u64) -> Result<(), VerifyError> {
     // Calculate expected proof byte length based on log_n.
     let (expected_word_len, actual_byte_len) = match proof {
-        ProofType::ZK(zkp) => (ZKProof::<H>::calculate_proof_word_len(log_n), zkp.len()),
-        ProofType::Plain(p) => (PlainProof::<H>::calculate_proof_word_len(log_n), p.len()),
+        ProofType::ZK(zkp) => (ZKProof::calculate_proof_word_len(log_n), zkp.len()),
+        ProofType::Plain(p) => (PlainProof::calculate_proof_word_len(log_n), p.len()),
     };
     let expected_byte_len = 32 * expected_word_len;
 
