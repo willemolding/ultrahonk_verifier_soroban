@@ -191,26 +191,6 @@ pub(crate) fn read_g1_by_splitting(data: &mut &[u8]) -> Result<G1, GroupError> {
     Ok(point)
 }
 
-// Parse point in G2.
-pub(crate) fn read_g2(data: &[u8]) -> Result<G2, ()> {
-    if data.len() != 128 {
-        return Err(());
-    }
-
-    // Read in reverse order (i.e., imaginary part before real part) to match
-    // Solidity's encoding:
-    // https://eips.ethereum.org/EIPS/eip-197#encoding
-    let x_c1 = read_fq_util(&data[0..32]).expect("Parsing the SRS should always succeed!");
-    let x_c0 = read_fq_util(&data[32..64]).expect("Parsing the SRS should always succeed!");
-    let y_c1 = read_fq_util(&data[64..96]).expect("Parsing the SRS should always succeed!");
-    let y_c0 = read_fq_util(&data[96..128]).expect("Parsing the SRS should always succeed!");
-
-    let x = Fq2::new(x_c0, x_c1);
-    let y = Fq2::new(y_c0, y_c1);
-
-    Ok(G2::new(x, y))
-}
-
 // Utility function for parsing points in G2.
 pub(crate) fn read_fq_util(data: &[u8]) -> Result<Fq, FieldError> {
     if data.len() != 32 {
@@ -232,4 +212,59 @@ pub(crate) fn read_fq_util(data: &[u8]) -> Result<Fq, FieldError> {
 pub(crate) fn to_hex_string(data: &[u8]) -> String {
     let hex_string: String = data.iter().map(|b| format!("{b:02x}")).collect();
     format!("0x{hex_string}")
+}
+
+// Soroban type conversion utils
+use ark_ff::BigInteger;
+use soroban_sdk::Env;
+
+pub(crate) fn to_soroban_g1(env: &Env, affine: G1) -> soroban_sdk::crypto::bn254::Bn254G1Affine {
+    let mut out = [0u8; 64];
+
+    if affine.is_zero() {
+        return soroban_sdk::crypto::bn254::Bn254G1Affine::from_array(env, &out);
+        // 64 zero bytes = point at infinity
+    }
+
+    let x = affine.x.into_bigint().to_bytes_be();
+    let y = affine.y.into_bigint().to_bytes_be();
+
+    out[..32].copy_from_slice(&x);
+    out[32..].copy_from_slice(&y);
+
+    // Spec requires flag bits (0x80 and 0x40) of the first byte to be unset.
+    // For a valid BN254 Fq element these should never be set — assert to catch
+    // any encoding bugs early rather than producing a silently wrong point.
+    assert!(out[0] & 0xc0 == 0, "flag bits set in G1 point encoding");
+
+    soroban_sdk::crypto::bn254::Bn254G1Affine::from_array(env, &out)
+}
+
+pub(crate) fn to_soroban_g2(env: &Env, affine: G2) -> soroban_sdk::crypto::bn254::Bn254G2Affine {
+    let mut out = [0u8; 128];
+
+    if affine.is_zero() {
+        return soroban_sdk::crypto::bn254::Bn254G2Affine::from_array(env, &out);
+        // 128 zero bytes = point at infinity
+    }
+
+    // Fq2 elements have two components: c0 and c1
+    // Ethereum encoding order: c1 before c0 for each coordinate
+    let x_c1 = affine.x.c1.into_bigint().to_bytes_be();
+    let x_c0 = affine.x.c0.into_bigint().to_bytes_be();
+    let y_c1 = affine.y.c1.into_bigint().to_bytes_be();
+    let y_c0 = affine.y.c0.into_bigint().to_bytes_be();
+
+    out[0..32].copy_from_slice(&x_c1);
+    out[32..64].copy_from_slice(&x_c0);
+    out[64..96].copy_from_slice(&y_c1);
+    out[96..128].copy_from_slice(&y_c0);
+
+    // Same flag bit check as G1 — valid Fq elements always have top two bits unset
+    assert!(out[0] & 0xc0 == 0, "flag bits set in G2 point encoding");
+    assert!(out[32] & 0xc0 == 0, "flag bits set in G2 point encoding");
+    assert!(out[64] & 0xc0 == 0, "flag bits set in G2 point encoding");
+    assert!(out[96] & 0xc0 == 0, "flag bits set in G2 point encoding");
+
+    soroban_sdk::crypto::bn254::Bn254G2Affine::from_array(env, &out)
 }

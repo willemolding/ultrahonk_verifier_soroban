@@ -47,7 +47,7 @@ use crate::{
     relations::accumulate_relation_evaluations,
     srs::{SRS_G2, SRS_G2_VK},
     transcript::{generate_transcript, CommonTranscriptData, Transcript},
-    utils::{read_g2, IntoBEBytes32},
+    utils::{to_soroban_g1, IntoBEBytes32},
 };
 use alloc::{boxed::Box, vec::Vec};
 use ark_bn254::G1Projective;
@@ -62,7 +62,10 @@ use errors::VerifyError;
 
 pub use constants::{PUB_SIZE, VK_SIZE};
 pub use proof::ProofType;
-use soroban_sdk::Env;
+use soroban_sdk::{
+    crypto::bn254::{Bn254G1Affine, Bn254G2Affine},
+    Env,
+};
 pub use types::*;
 
 /// A single public input.
@@ -560,19 +563,22 @@ fn verify_shplemini(
     let recursion_separator = generate_recursion_separator(env, &p_0, &p_1, &p_0_other, &p_1_other);
 
     // accumulate with aggregate points in proof
-    let g1_points = [
-        G1Prepared::from(p_0 * recursion_separator + p_0_other),
-        G1Prepared::from(p_1 * recursion_separator + p_1_other),
+    let g1_points = soroban_sdk::vec![
+        env,
+        to_soroban_g1(env, (p_0 * recursion_separator + p_0_other).into_affine()),
+        to_soroban_g1(env, (p_1 * recursion_separator + p_1_other).into_affine()),
     ];
 
-    let g2_points = [
-        G2Prepared::from(read_g2(&SRS_G2).expect("Parsing the SRS point should always work")),
-        G2Prepared::from(read_g2(&SRS_G2_VK).expect("Parsing the SRS point should always work")),
+    let g2_points = soroban_sdk::vec![
+        env,
+        Bn254G2Affine::from_array(env, &SRS_G2),
+        Bn254G2Affine::from_array(env, &SRS_G2_VK),
     ];
 
-    let product = Bn254::multi_pairing(g1_points, g2_points);
+    // let product = Bn254::multi_pairing(g1_points, g2_points);
+    let check_is_1 = env.crypto().bn254().pairing_check(g1_points, g2_points);
 
-    if product.0.is_one() {
+    if check_is_1 {
         Ok(())
     } else {
         Err(ProofError::ShpleminiPairingCheckFailed)
