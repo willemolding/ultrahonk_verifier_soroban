@@ -38,24 +38,55 @@ use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, MontFp, PrimeField};
 use core::{array::from_fn, fmt};
 use sha3::{Digest, Keccak256};
-use snafu::Snafu;
 
 /// Unified enum for handling errors of all flavors.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq)]
 pub enum ProofError {
-    #[snafu(display("Incorrect buffer size. Expected: {expected_size}; Got: {actual_size}",))]
+    // #[snafu(display("Incorrect buffer size. Expected: {expected_size}; Got: {actual_size}",))]
     IncorrectBufferSize {
         expected_size: usize,
         actual_size: usize,
     },
-    #[snafu(display("Group element conversion error: {conv_error}"))]
-    GroupConversionError { conv_error: ConversionError },
-    #[snafu(display("Shplemini pairing check failed"))]
+    // #[snafu(display("Group element conversion error: {conv_error}"))]
+    GroupConversionError {
+        conv_error: ConversionError,
+    },
+    // #[snafu(display("Shplemini pairing check failed"))]
     ShpleminiPairingCheckFailed,
-    #[snafu(display("Consistency check failed. Cause: {message}"))]
-    ConsistencyCheckFailed { message: &'static str },
-    #[snafu(display("Other error: {message}"))]
-    OtherError { message: String },
+    // #[snafu(display("Consistency check failed. Cause: {message}"))]
+    ConsistencyCheckFailed {
+        message: &'static str,
+    },
+    // #[snafu(display("Other error: {message}"))]
+    OtherError {
+        message: String,
+    },
+}
+
+impl core::fmt::Display for ProofError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProofError::IncorrectBufferSize {
+                expected_size,
+                actual_size,
+            } => write!(
+                f,
+                "Incorrect buffer size. Expected: {expected_size}; Got: {actual_size}"
+            ),
+            ProofError::GroupConversionError { conv_error } => {
+                write!(f, "Group element conversion error: {conv_error}")
+            }
+            ProofError::ShpleminiPairingCheckFailed => {
+                write!(f, "Shplemini pairing check failed")
+            }
+            ProofError::ConsistencyCheckFailed { message } => {
+                write!(f, "Consistency check failed. Cause: {message}")
+            }
+            ProofError::OtherError { message } => {
+                write!(f, "Other error: {message}")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]

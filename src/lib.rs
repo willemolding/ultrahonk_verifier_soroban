@@ -49,7 +49,7 @@ use crate::{
     transcript::{generate_transcript, CommonTranscriptData, Transcript},
     utils::{read_g2, IntoBEBytes32},
 };
-use alloc::{boxed::Box, format, string::ToString, vec::Vec};
+use alloc::{boxed::Box, string::ToString, vec::Vec};
 use ark_bn254::G1Projective;
 use ark_ec::{
     bn::{G1Prepared, G2Prepared},
@@ -82,14 +82,14 @@ pub fn verify(vk_bytes: &[u8], proof: &ProofType, pubs: &Pubs) -> Result<(), Ver
         ProofType::ZK(proof_bytes) => ParsedProof::ZK(Box::new(
             ZKProof::from_bytes(&proof_bytes[..], vk.log_circuit_size).map_err(|_| {
                 VerifyError::InvalidProofError {
-                    message: "Failed parsing ZK proof".to_string(),
+                    message: "Failed parsing ZK proof",
                 }
             })?,
         )),
         ProofType::Plain(proof_bytes) => ParsedProof::Plain(Box::new(
             PlainProof::from_bytes(&proof_bytes[..], vk.log_circuit_size).map_err(|_| {
                 VerifyError::InvalidProofError {
-                    message: "Failed parsing Plain proof".to_string(),
+                    message: "Failed parsing Plain proof",
                 }
             })?,
         )),
@@ -121,15 +121,15 @@ fn verify_internal(
         );
 
     // Sumcheck
-    verify_sumcheck(parsed_proof, &t, vk.log_circuit_size, public_inputs_delta).map_err(
-        |cause| VerifyError::VerificationError {
-            message: format!("Sumcheck Failed. Cause: {cause}"),
-        },
-    )?;
+    verify_sumcheck(parsed_proof, &t, vk.log_circuit_size, public_inputs_delta).map_err(|_| {
+        VerifyError::VerificationError {
+            message: "Sumcheck Failed.",
+        }
+    })?;
 
     // Shplemini
-    verify_shplemini(parsed_proof, vk, &t).map_err(|cause| VerifyError::VerificationError {
-        message: format!("Shplemini Failed. Cause: {cause}"),
+    verify_shplemini(parsed_proof, vk, &t).map_err(|_| VerifyError::VerificationError {
+        message: "Shplemini Failed.",
     })?;
 
     Ok(())
@@ -141,11 +141,7 @@ fn check_public_input_number(vk: &VerificationKey, pubs: &Pubs) -> Result<(), Ve
     // see: https://github.com/AztecProtocol/barretenberg/issues/1331
     if vk.combined_input_size - PAIRING_POINTS_SIZE as u64 != pubs.len() as u64 {
         Err(VerifyError::PublicInputError {
-            message: format!(
-                "Provided public inputs length does not match value in vk. Expected: {}; Got: {}",
-                vk.combined_input_size - PAIRING_POINTS_SIZE as u64,
-                pubs.len()
-            ),
+            message: "Provided public inputs length does not match value in vk",
         })
     } else {
         Ok(())
@@ -664,9 +660,7 @@ fn check_proof_byte_len(proof: &ProofType, log_n: u64) -> Result<(), VerifyError
     // Check the received proof is the expected byte length where each field element is 32 bytes
     if actual_byte_len != expected_byte_len {
         Err(VerifyError::InvalidProofError {
-            message: format!(
-                "Provided proof byte length does not match expected byte length. Expected: {expected_byte_len}; Got: {actual_byte_len}"
-            ),
+            message: "Provided proof byte length does not match expected byte length",
         })
     } else {
         Ok(())

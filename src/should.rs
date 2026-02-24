@@ -575,50 +575,37 @@ mod reject {
     fn a_zk_proof_with_non_matching_number_of_pis(
         valid_vk: [u8; VK_SIZE],
         valid_zk_proof: Box<[u8]>,
-        valid_pubs: [PublicInput; 1],
+        _valid_pubs: [PublicInput; 1],
     ) {
         let invalid_pubs: [PublicInput; 0] = [];
 
         assert_eq!(
-                verify(
-                    &valid_vk,
-                    &ProofType::ZK(valid_zk_proof),
-                    &invalid_pubs
-                )
-                .unwrap_err(),
-                VerifyError::PublicInputError {
-                    message: format!(
-                        "Provided public inputs length does not match value in vk. Expected: {}; Got: {}",
-                        valid_pubs.len(),
-                        invalid_pubs.len()
-                    )
-                }
-            );
+            verify(&valid_vk, &ProofType::ZK(valid_zk_proof), &invalid_pubs).unwrap_err(),
+            VerifyError::PublicInputError {
+                message: "Provided public inputs length does not match value in vk"
+            }
+        );
     }
 
     #[rstest]
     fn a_plain_proof_with_non_matching_number_of_pis(
         valid_vk: [u8; VK_SIZE],
         valid_plain_proof: Box<[u8]>,
-        valid_pubs: [PublicInput; 1],
+        _valid_pubs: [PublicInput; 1],
     ) {
         let invalid_pubs: [PublicInput; 0] = [];
 
         assert_eq!(
-                verify(
-                    &valid_vk,
-                    &ProofType::Plain(valid_plain_proof),
-                    &invalid_pubs
-                )
-                .unwrap_err(),
-                VerifyError::PublicInputError {
-                    message: format!(
-                        "Provided public inputs length does not match value in vk. Expected: {}; Got: {}",
-                        valid_pubs.len(),
-                        invalid_pubs.len()
-                    )
-                }
-            );
+            verify(
+                &valid_vk,
+                &ProofType::Plain(valid_plain_proof),
+                &invalid_pubs
+            )
+            .unwrap_err(),
+            VerifyError::PublicInputError {
+                message: "Provided public inputs length does not match value in vk"
+            }
+        );
     }
 
     #[rstest]
@@ -641,9 +628,7 @@ mod reject {
             )
             .unwrap_err(),
             VerifyError::VerificationError {
-                message: format!(
-                    "Sumcheck Failed. Cause: Total Sum differs from Round Target Sum."
-                )
+                message: "Sumcheck Failed."
             }
         );
     }
@@ -668,9 +653,7 @@ mod reject {
             )
             .unwrap_err(),
             VerifyError::VerificationError {
-                message: format!(
-                    "Sumcheck Failed. Cause: Total Sum differs from Round Target Sum."
-                )
+                message: "Sumcheck Failed."
             }
         );
     }
@@ -691,13 +674,16 @@ mod reject {
             .fill(0); // Alter sumcheck_evaluations
 
         assert_eq!(
-                verify(&valid_vk, &ProofType::ZK(invalid_zk_proof.into_boxed_slice()), &valid_pubs).unwrap_err(),
-                VerifyError::VerificationError {
-                    message: format!(
-                        "Sumcheck Failed. Cause: Grand Honk Relation Sum does not match Round Target Sum."
-                    )
-                }
-            );
+            verify(
+                &valid_vk,
+                &ProofType::ZK(invalid_zk_proof.into_boxed_slice()),
+                &valid_pubs
+            )
+            .unwrap_err(),
+            VerifyError::VerificationError {
+                message: "Sumcheck Failed."
+            }
+        );
     }
 
     #[rstest]
@@ -716,13 +702,16 @@ mod reject {
             .fill(0); // Alter sumcheck_evaluations
 
         assert_eq!(
-                verify(&valid_vk, &ProofType::Plain(invalid_plain_proof.into_boxed_slice()), &valid_pubs).unwrap_err(),
-                VerifyError::VerificationError {
-                    message: format!(
-                        "Sumcheck Failed. Cause: Grand Honk Relation Sum does not match Round Target Sum."
-                    )
-                }
-            );
+            verify(
+                &valid_vk,
+                &ProofType::Plain(invalid_plain_proof.into_boxed_slice()),
+                &valid_pubs
+            )
+            .unwrap_err(),
+            VerifyError::VerificationError {
+                message: "Sumcheck Failed."
+            }
+        );
     }
 
     #[rstest]
@@ -753,7 +742,7 @@ mod reject {
             )
             .unwrap_err(),
             VerifyError::VerificationError {
-                message: format!("Shplemini Failed. Cause: Shplemini pairing check failed")
+                message: "Shplemini Failed."
             }
         );
     }
@@ -786,7 +775,7 @@ mod reject {
             )
             .unwrap_err(),
             VerifyError::VerificationError {
-                message: format!("Shplemini Failed. Cause: Shplemini pairing check failed")
+                message: "Shplemini Failed."
             }
         );
     }

@@ -27,19 +27,18 @@ use crate::{
 };
 use core::fmt;
 use sha3::{digest::Update, Digest, Keccak256};
-use snafu::Snafu;
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq)]
 pub enum VerificationKeyError {
-    #[snafu(display("Buffer too short"))]
+    // #[snafu(display("Buffer too short"))]
     BufferTooShort,
-    #[snafu(display("Invalid log circuit size. Must be a positive integer."))]
+    // #[snafu(display("Invalid log circuit size. Must be a positive integer."))]
     InvalidLogCircuitSize,
-    #[snafu(display("Invalid log circuit size. Must not exceed {CONST_PROOF_SIZE_LOG_N}."))]
+    // #[snafu(display("Invalid log circuit size. Must not exceed {CONST_PROOF_SIZE_LOG_N}."))]
     LogCircuitSizeTooBig,
-    #[snafu(display("Group element conversion error: {conv_error}"))]
+    // #[snafu(display("Group element conversion error: {conv_error}"))]
     GroupConversionError { conv_error: ConversionError },
-    #[snafu(display("Parsing error"))]
+    // #[snafu(display("Parsing error"))]
     ParsingError,
 }
 

@@ -14,9 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use alloc::string::String;
 use core::fmt;
-use snafu::Snafu;
 
 use crate::{
     key::VkCommitmentField,
@@ -26,22 +24,22 @@ use crate::{
 };
 
 /// The verification error type
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq)]
 pub enum VerifyError {
     /// Failure due to another reason.
-    #[snafu(display("Other Error"))]
+    // #[snafu(display("Other Error"))]
     OtherError,
     /// Provided data has not valid public inputs.
-    #[snafu(display("Invalid public input: {message}"))]
-    PublicInputError { message: String },
+    // #[snafu(display("Invalid public input: {message}"))]
+    PublicInputError { message: &'static str },
     /// Provided data has not valid proof.
-    #[snafu(display("Invalid Proof"))]
-    InvalidProofError { message: String },
+    // #[snafu(display("Invalid Proof"))]
+    InvalidProofError { message: &'static str },
     /// Verify proof failed.
-    #[snafu(display("Verification Failed. Message: {message}"))]
-    VerificationError { message: String },
+    // #[snafu(display("Verification Failed. Message: {message}"))]
+    VerificationError { message: &'static str },
     /// Provided an invalid verification key.
-    #[snafu(display("Key Error"))]
+    // #[snafu(display("Key Error"))]
     KeyError,
 }
 
