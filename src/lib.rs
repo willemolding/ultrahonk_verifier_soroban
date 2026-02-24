@@ -50,10 +50,13 @@ use crate::{
     utils::{read_g2, IntoBEBytes32},
 };
 use alloc::{boxed::Box, format, string::ToString, vec::Vec};
-// use ark_bn254_ext::CurveHooks;
-use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
+use ark_bn254::G1Projective;
+use ark_ec::{
+    bn::{G1Prepared, G2Prepared},
+    pairing::Pairing,
+    AffineRepr, CurveGroup, VariableBaseMSM,
+};
 use ark_ff::{batch_inversion, AdditiveGroup, Field, One, PrimeField};
-use ark_models_ext::bn::{G1Prepared, G2Prepared};
 use constants::{SUBGROUP_GENERATOR, SUBGROUP_GENERATOR_INVERSE};
 use errors::VerifyError;
 
@@ -536,7 +539,7 @@ fn verify_shplemini(
     scalars[boundary] = tp.shplonk_z(); // evaluation challenge
 
     // Pairing Check
-    let p_0 = H::bn254_msm_g1(&commitments, &scalars)
+    let p_0 = G1Projective::msm(&commitments, &scalars)
         .map_err(|_| ProofError::OtherError {
             message: "Shplemini MSM computation failed.".to_string(),
         })?

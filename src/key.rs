@@ -631,13 +631,13 @@ mod should {
 
     #[rstest]
     fn parse_valid_vk(valid_vk: [u8; VK_SIZE]) {
-        assert!(VerificationKey::<()>::try_from(&valid_vk[..]).is_ok());
+        assert!(VerificationKey::try_from(&valid_vk[..]).is_ok());
     }
 
     #[rstest]
     fn extract_log_circuit_size_from_valid_vk(valid_vk: [u8; VK_SIZE]) {
         assert_eq!(
-            VerificationKey::<()>::extract_log_circuit_size(&valid_vk[..]),
+            VerificationKey::extract_log_circuit_size(&valid_vk[..]),
             Ok(0x0c)
         );
     }
@@ -657,7 +657,7 @@ mod should {
         fn a_vk_from_a_short_buffer(valid_vk: [u8; VK_SIZE]) {
             let invalid_vk = &valid_vk[..VK_SIZE - 1];
             assert_eq!(
-                VerificationKey::<()>::try_from(&invalid_vk[..]),
+                VerificationKey::try_from(&invalid_vk[..]),
                 Err(VerificationKeyError::BufferTooShort)
             );
         }
@@ -668,7 +668,7 @@ mod should {
             invalid_vk.copy_from_slice(&valid_vk);
             invalid_vk[..EVM_WORD_SIZE].fill(0);
             assert_eq!(
-                VerificationKey::<()>::try_from(&invalid_vk[..]),
+                VerificationKey::try_from(&invalid_vk[..]),
                 Err(VerificationKeyError::InvalidLogCircuitSize)
             );
         }
@@ -680,7 +680,7 @@ mod should {
             let invalid_bytes = U256::from(CONST_PROOF_SIZE_LOG_N as u64 + 1).into_be_bytes32();
             invalid_vk[0..EVM_WORD_SIZE].copy_from_slice(&invalid_bytes);
             assert_eq!(
-                VerificationKey::<()>::try_from(&invalid_vk[..]),
+                VerificationKey::try_from(&invalid_vk[..]),
                 Err(VerificationKeyError::LogCircuitSizeTooBig)
             );
         }
@@ -688,7 +688,7 @@ mod should {
         #[rstest]
         fn a_vk_with_insufficient_bytes_for_log_circuit_size(valid_vk: [u8; VK_SIZE]) {
             let invalid_vk = &valid_vk[..EVM_WORD_SIZE - 1];
-            assert!(VerificationKey::<()>::extract_log_circuit_size(invalid_vk).is_err());
+            assert!(VerificationKey::extract_log_circuit_size(invalid_vk).is_err());
         }
 
         #[rstest]
@@ -696,7 +696,7 @@ mod should {
             let mut invalid_vk = [0u8; VK_SIZE];
             invalid_vk.copy_from_slice(&valid_vk);
             invalid_vk[..EVM_WORD_SIZE].fill(0);
-            assert!(VerificationKey::<()>::extract_log_circuit_size(&invalid_vk[..]).is_err());
+            assert!(VerificationKey::extract_log_circuit_size(&invalid_vk[..]).is_err());
         }
 
         #[rstest]
@@ -707,7 +707,7 @@ mod should {
                 + Fr::ONE)
                 .into_be_bytes32();
             invalid_vk[..EVM_WORD_SIZE].copy_from_slice(&invalid_bytes);
-            assert!(VerificationKey::<()>::extract_log_circuit_size(&invalid_vk[..]).is_err());
+            assert!(VerificationKey::extract_log_circuit_size(&invalid_vk[..]).is_err());
         }
 
         #[rstest]
@@ -751,7 +751,7 @@ mod should {
                     .fill(1);
 
                 assert_eq!(
-                    VerificationKey::<()>::try_from(&invalid_vk[..]).unwrap_err(),
+                    VerificationKey::try_from(&invalid_vk[..]).unwrap_err(),
                     VerificationKeyError::GroupConversionError {
                         conv_error: ConversionError {
                             group: GroupError::NotOnCurve,

@@ -1602,12 +1602,12 @@ mod should {
 
     #[rstest]
     fn parse_valid_zk_proof(valid_zk_proof: Box<[u8]>, logn: u64) {
-        assert!(ZKProof::<()>::from_bytes(&valid_zk_proof[..], logn).is_ok());
+        assert!(ZKProof::from_bytes(&valid_zk_proof[..], logn).is_ok());
     }
 
     #[rstest]
     fn parse_valid_plain_proof(valid_plain_proof: Box<[u8]>, logn: u64) {
-        assert!(PlainProof::<()>::from_bytes(&valid_plain_proof[..], logn).is_ok());
+        assert!(PlainProof::from_bytes(&valid_plain_proof[..], logn).is_ok());
     }
 
     mod reject {
@@ -1619,9 +1619,9 @@ mod should {
         fn a_zk_proof_from_a_short_buffer(valid_zk_proof: Box<[u8]>, logn: u64) {
             let invalid_zk_proof = &valid_zk_proof[..valid_zk_proof.len() - 1];
             assert_eq!(
-                ZKProof::<()>::from_bytes(&invalid_zk_proof[..], logn),
+                ZKProof::from_bytes(&invalid_zk_proof[..], logn),
                 Err(ProofError::IncorrectBufferSize {
-                    expected_size: ZKProof::<()>::calculate_proof_byte_len(logn),
+                    expected_size: ZKProof::calculate_proof_byte_len(logn),
                     actual_size: invalid_zk_proof.len()
                 })
             );
@@ -1631,9 +1631,9 @@ mod should {
         fn a_plain_proof_from_a_short_buffer(valid_plain_proof: Box<[u8]>, logn: u64) {
             let invalid_proof = &valid_plain_proof[..valid_plain_proof.len() - 1];
             assert_eq!(
-                PlainProof::<()>::from_bytes(invalid_proof, logn),
+                PlainProof::from_bytes(invalid_proof, logn),
                 Err(ProofError::IncorrectBufferSize {
-                    expected_size: PlainProof::<()>::calculate_proof_byte_len(logn),
+                    expected_size: PlainProof::calculate_proof_byte_len(logn),
                     actual_size: invalid_proof.len()
                 })
             );
@@ -1739,7 +1739,7 @@ mod should {
                 invalid_zk_proof[offset + GROUP_ELEMENT_SIZE - 1] = 3;
 
                 assert_eq!(
-                    ZKProof::<()>::from_bytes(&invalid_zk_proof[..], logn()),
+                    ZKProof::from_bytes(&invalid_zk_proof[..], logn()),
                     Err(ProofError::GroupConversionError {
                         conv_error: ConversionError {
                             group: GroupError::NotOnCurve,
@@ -1850,7 +1850,7 @@ mod should {
                 invalid_zk_proof[offset..offset + EVM_WORD_SIZE].copy_from_slice(&invalid_bytes);
 
                 assert_eq!(
-                    ZKProof::<()>::from_bytes(&invalid_zk_proof[..], logn()),
+                    ZKProof::from_bytes(&invalid_zk_proof[..], logn()),
                     Err(ProofError::GroupConversionError {
                         conv_error: ConversionError {
                             group: GroupError::CoordinateExceedsModulus {
@@ -1936,7 +1936,7 @@ mod should {
                 invalid_plain_proof[offset + GROUP_ELEMENT_SIZE - 1] = 3;
 
                 assert_eq!(
-                    PlainProof::<()>::from_bytes(&invalid_plain_proof[..], logn()),
+                    PlainProof::from_bytes(&invalid_plain_proof[..], logn()),
                     Err(ProofError::GroupConversionError {
                         conv_error: ConversionError {
                             group: GroupError::NotOnCurve,
@@ -2021,7 +2021,7 @@ mod should {
                 invalid_plain_proof[offset..offset + EVM_WORD_SIZE].copy_from_slice(&invalid_bytes);
 
                 assert_eq!(
-                    PlainProof::<()>::from_bytes(&invalid_plain_proof[..], logn()),
+                    PlainProof::from_bytes(&invalid_plain_proof[..], logn()),
                     Err(ProofError::GroupConversionError {
                         conv_error: ConversionError {
                             group: GroupError::CoordinateExceedsModulus {

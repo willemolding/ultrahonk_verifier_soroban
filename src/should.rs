@@ -555,7 +555,7 @@ fn verify_valid_zk_proof(
     valid_zk_proof: Box<[u8]>,
     valid_pubs: [PublicInput; 1],
 ) {
-    assert!(verify::<()>(&valid_vk, &ProofType::ZK(valid_zk_proof), &valid_pubs).is_ok());
+    assert!(verify(&valid_vk, &ProofType::ZK(valid_zk_proof), &valid_pubs).is_ok());
 }
 
 #[rstest]
@@ -564,7 +564,7 @@ fn verify_valid_plain_proof(
     valid_plain_proof: Box<[u8]>,
     valid_pubs: [PublicInput; 1],
 ) {
-    assert!(verify::<()>(&valid_vk, &ProofType::Plain(valid_plain_proof), &valid_pubs).is_ok());
+    assert!(verify(&valid_vk, &ProofType::Plain(valid_plain_proof), &valid_pubs).is_ok());
 }
 
 mod reject {
@@ -580,7 +580,7 @@ mod reject {
         let invalid_pubs: [PublicInput; 0] = [];
 
         assert_eq!(
-                verify::<()>(
+                verify(
                     &valid_vk,
                     &ProofType::ZK(valid_zk_proof),
                     &invalid_pubs
@@ -605,7 +605,7 @@ mod reject {
         let invalid_pubs: [PublicInput; 0] = [];
 
         assert_eq!(
-                verify::<()>(
+                verify(
                     &valid_vk,
                     &ProofType::Plain(valid_plain_proof),
                     &invalid_pubs
@@ -634,7 +634,7 @@ mod reject {
             .fill(0); // Alter sumcheck_univariates[0]
 
         assert_eq!(
-            verify::<()>(
+            verify(
                 &valid_vk,
                 &ProofType::ZK(invalid_zk_proof.into_boxed_slice()),
                 &valid_pubs
@@ -661,7 +661,7 @@ mod reject {
             .fill(0); // Alter sumcheck_univariates[0]
 
         assert_eq!(
-            verify::<()>(
+            verify(
                 &valid_vk,
                 &ProofType::Plain(invalid_plain_proof.into_boxed_slice()),
                 &valid_pubs
@@ -691,7 +691,7 @@ mod reject {
             .fill(0); // Alter sumcheck_evaluations
 
         assert_eq!(
-                verify::<()>(&valid_vk, &ProofType::ZK(invalid_zk_proof.into_boxed_slice()), &valid_pubs).unwrap_err(),
+                verify(&valid_vk, &ProofType::ZK(invalid_zk_proof.into_boxed_slice()), &valid_pubs).unwrap_err(),
                 VerifyError::VerificationError {
                     message: format!(
                         "Sumcheck Failed. Cause: Grand Honk Relation Sum does not match Round Target Sum."
@@ -716,7 +716,7 @@ mod reject {
             .fill(0); // Alter sumcheck_evaluations
 
         assert_eq!(
-                verify::<()>(&valid_vk, &ProofType::Plain(invalid_plain_proof.into_boxed_slice()), &valid_pubs).unwrap_err(),
+                verify(&valid_vk, &ProofType::Plain(invalid_plain_proof.into_boxed_slice()), &valid_pubs).unwrap_err(),
                 VerifyError::VerificationError {
                     message: format!(
                         "Sumcheck Failed. Cause: Grand Honk Relation Sum does not match Round Target Sum."
@@ -731,10 +731,10 @@ mod reject {
         valid_zk_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
     ) {
-        let log_circuit_size = VerificationKey::<()>::try_from(&valid_vk[..])
+        let log_circuit_size = VerificationKey::try_from(&valid_vk[..])
             .expect("vk is valid")
             .log_circuit_size;
-        let zk_proof_size = ZKProof::<()>::calculate_proof_byte_len(log_circuit_size);
+        let zk_proof_size = ZKProof::calculate_proof_byte_len(log_circuit_size);
         let offset = zk_proof_size
             - 2 * GROUP_ELEMENT_SIZE
             - FIELD_ELEMENT_SIZE * NUM_LIBRA_EVALUATIONS
@@ -746,7 +746,7 @@ mod reject {
         invalid_zk_proof[offset + 2 * EVM_WORD_SIZE - 1] = 3;
 
         assert_eq!(
-            verify::<()>(
+            verify(
                 &valid_vk,
                 &ProofType::ZK(invalid_zk_proof.into_boxed_slice()),
                 &valid_pubs
@@ -764,10 +764,10 @@ mod reject {
         valid_plain_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
     ) {
-        let log_circuit_size = VerificationKey::<()>::try_from(&valid_vk[..])
+        let log_circuit_size = VerificationKey::try_from(&valid_vk[..])
             .expect("vk is valid")
             .log_circuit_size;
-        let plain_proof_size = PlainProof::<()>::calculate_proof_byte_len(log_circuit_size);
+        let plain_proof_size = PlainProof::calculate_proof_byte_len(log_circuit_size);
         let offset = plain_proof_size
             - 2 * GROUP_ELEMENT_SIZE
             - FIELD_ELEMENT_SIZE * log_circuit_size as usize;
@@ -779,7 +779,7 @@ mod reject {
         invalid_plain_proof[offset + 2 * EVM_WORD_SIZE - 1] = 3;
 
         assert_eq!(
-            verify::<()>(
+            verify(
                 &valid_vk,
                 &ProofType::Plain(invalid_plain_proof.into_boxed_slice()),
                 &valid_pubs

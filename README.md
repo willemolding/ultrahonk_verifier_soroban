@@ -24,7 +24,7 @@ let pubs: Vec<[u8; 32]> = include_bytes!("../tests/data/zk/pubs")
 let proof: ProofType = ProofType::ZK(zk_proof_data);
 
 // Call the UltraHonk verifier.
-assert!(verify::<()>(vk, &proof, &pubs).is_ok()); // success
+assert!(verify(vk, &proof, &pubs).is_ok()); // success
 ```
 
 > **Note:** Please note that this verifier currently only supports the following configuration:
