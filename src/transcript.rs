@@ -367,65 +367,19 @@ fn generate_eta_challenge(
     // For ZK flavors: hash the gemini masking poly commitment (sent right after public inputs)
     if let ParsedProof::ZK(zkp) = parsed_proof {
         round0 = round0
-            .chain_update(
-                zkp.gemini_masking_poly
-                    .x()
-                    .expect("Coordinate should be set")
-                    .into_be_bytes32(),
-            )
-            .chain_update(
-                zkp.gemini_masking_poly
-                    .y()
-                    .expect("Coordinate should be set")
-                    .into_be_bytes32(),
-            );
+            .chain_update(zkp.gemini_masking_poly.x().into_be_bytes32())
+            .chain_update(zkp.gemini_masking_poly.y().into_be_bytes32());
     };
 
     // Create the first challenge
     // Note: w4 is added to the challenge later on
     let hash: EVMWord = round0
-        .chain_update(
-            parsed_proof
-                .w1()
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .w1()
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .w2()
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .w2()
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .w3()
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .w3()
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
+        .chain_update(parsed_proof.w1().x().into_be_bytes32())
+        .chain_update(parsed_proof.w1().y().into_be_bytes32())
+        .chain_update(parsed_proof.w2().x().into_be_bytes32())
+        .chain_update(parsed_proof.w2().y().into_be_bytes32())
+        .chain_update(parsed_proof.w3().x().into_be_bytes32())
+        .chain_update(parsed_proof.w3().y().into_be_bytes32())
         .finalize()
         .into();
 
@@ -451,48 +405,12 @@ fn generate_beta_and_gamma_challenges(
 ) -> [Fr; 3] {
     let round1: EVMWord = Keccak256::new(env)
         .chain_update(previous_challenge.into_be_bytes32())
-        .chain_update(
-            parsed_proof
-                .lookup_read_counts()
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .lookup_read_counts()
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .lookup_read_tags()
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .lookup_read_tags()
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .w4()
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .w4()
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
+        .chain_update(parsed_proof.lookup_read_counts().x().into_be_bytes32())
+        .chain_update(parsed_proof.lookup_read_counts().y().into_be_bytes32())
+        .chain_update(parsed_proof.lookup_read_tags().x().into_be_bytes32())
+        .chain_update(parsed_proof.lookup_read_tags().y().into_be_bytes32())
+        .chain_update(parsed_proof.w4().x().into_be_bytes32())
+        .chain_update(parsed_proof.w4().y().into_be_bytes32())
         .finalize()
         .into();
 
@@ -513,34 +431,10 @@ fn generate_alpha_challenges(
     // Generate the original sumcheck alpha 0 by hashing zPerm and zLookup
     let alpha0: EVMWord = Keccak256::new(env)
         .chain_update(previous_challenge.into_be_bytes32())
-        .chain_update(
-            parsed_proof
-                .lookup_inverses()
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .lookup_inverses()
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .z_perm()
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .z_perm()
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
+        .chain_update(parsed_proof.lookup_inverses().x().into_be_bytes32())
+        .chain_update(parsed_proof.lookup_inverses().y().into_be_bytes32())
+        .chain_update(parsed_proof.z_perm().x().into_be_bytes32())
+        .chain_update(parsed_proof.z_perm().y().into_be_bytes32())
         .finalize()
         .into();
 
@@ -583,18 +477,8 @@ fn generate_gate_challenges(
 fn generate_libra_challenge(env: &Env, previous_challenge: Fr, zk_proof: &ZKProof) -> (Fr, Fr) {
     let hash: EVMWord = Keccak256::new(env)
         .chain_update(previous_challenge.into_be_bytes32())
-        .chain_update(
-            zk_proof.libra_commitments[0]
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            zk_proof.libra_commitments[0]
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
+        .chain_update(zk_proof.libra_commitments[0].x().into_be_bytes32())
+        .chain_update(zk_proof.libra_commitments[0].y().into_be_bytes32())
         .chain_update(zk_proof.libra_sum.into_be_bytes32())
         .finalize()
         .into();
@@ -654,31 +538,11 @@ fn generate_rho_challenge(
     if let ParsedProof::ZK(zk_proof) = parsed_proof {
         hasher.update(zk_proof.libra_evaluation.into_be_bytes32());
 
-        hasher.update(
-            zk_proof.libra_commitments[1]
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        );
-        hasher.update(
-            zk_proof.libra_commitments[1]
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        );
+        hasher.update(zk_proof.libra_commitments[1].x().into_be_bytes32());
+        hasher.update(zk_proof.libra_commitments[1].y().into_be_bytes32());
 
-        hasher.update(
-            zk_proof.libra_commitments[2]
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        );
-        hasher.update(
-            zk_proof.libra_commitments[2]
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        );
+        hasher.update(zk_proof.libra_commitments[2].x().into_be_bytes32());
+        hasher.update(zk_proof.libra_commitments[2].y().into_be_bytes32());
     }
 
     let hash: EVMWord = hasher.finalize().into();
@@ -700,18 +564,8 @@ fn generate_gemini_r_challenge(
     hasher.update(previous_challenge.into_be_bytes32());
 
     for i in 0..(log_n as usize - 1) {
-        hasher.update(
-            parsed_proof.gemini_fold_comms()[i]
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        );
-        hasher.update(
-            parsed_proof.gemini_fold_comms()[i]
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        );
+        hasher.update(parsed_proof.gemini_fold_comms()[i].x().into_be_bytes32());
+        hasher.update(parsed_proof.gemini_fold_comms()[i].y().into_be_bytes32());
     }
 
     let hash: EVMWord = hasher.finalize().into();
@@ -761,20 +615,8 @@ fn generate_shplonk_z_challenge(
 ) -> (Fr, Fr) {
     let hash: EVMWord = Keccak256::new(env)
         .chain_update(previous_challenge.into_be_bytes32())
-        .chain_update(
-            parsed_proof
-                .shplonk_q()
-                .x()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            parsed_proof
-                .shplonk_q()
-                .y()
-                .expect("Coordinate should be set")
-                .into_be_bytes32(),
-        )
+        .chain_update(parsed_proof.shplonk_q().x().into_be_bytes32())
+        .chain_update(parsed_proof.shplonk_q().y().into_be_bytes32())
         .finalize()
         .into();
 

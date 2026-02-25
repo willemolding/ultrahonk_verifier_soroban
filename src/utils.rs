@@ -135,13 +135,9 @@ pub(crate) fn read_u64_from_evm_word(data: &[u8]) -> Result<u64, ()> {
     parse_u64_evm_word(chunk)
 }
 
-pub(crate) fn read_u64_from_evm_word_by_splitting(data: &mut &[u8]) -> Result<u64, ()> {
-    let chunk: &EVMWord = data
-        .split_off(..EVM_WORD_SIZE)
-        .ok_or(())?
-        .try_into()
-        .expect("Conversion should succeed at this point");
-    parse_u64_evm_word(chunk)
+pub(crate) fn read_u64_from_evm_word_by_splitting(data: &mut Bytes) -> Result<u64, ()> {
+    let chunk = split_off::<EVM_WORD_SIZE>(data);
+    parse_u64_evm_word(&chunk)
 }
 
 pub(crate) fn read_u256(bytes: &[u8]) -> Result<U256, ()> {
@@ -150,14 +146,16 @@ pub(crate) fn read_u256(bytes: &[u8]) -> Result<U256, ()> {
         .map(IntoU256::into_u256)
 }
 
+pub(crate) fn split_off<const N: usize>(data: &mut Bytes) -> [u8; N] {
+    let mut chunk = [0_u8; N];
+    data.slice(..N as u32).copy_into_slice(&mut chunk);
+    *data = data.slice(N as u32..);
+    chunk
+}
+
 // Parse point in G1.
-pub(crate) fn read_g1_by_splitting(data: &mut &[u8]) -> Result<G1, GroupError> {
-    let chunk = data
-        .split_off(..GROUP_ELEMENT_SIZE)
-        .ok_or(GroupError::InvalidSliceLength {
-            actual_length: data.len(),
-            expected_length: GROUP_ELEMENT_SIZE,
-        })?;
+pub(crate) fn read_g1_by_splitting(data: &mut Bytes) -> Result<G1, GroupError> {
+    let chunk = split_off::<GROUP_ELEMENT_SIZE>(data);
 
     let tmp_x = read_u256(&chunk[0..EVM_WORD_SIZE]).expect("Conversion should work at this point");
     let x = Fq::from_bigint(tmp_x).ok_or(GroupError::CoordinateExceedsModulus {
@@ -175,10 +173,10 @@ pub(crate) fn read_g1_by_splitting(data: &mut &[u8]) -> Result<G1, GroupError> {
     // If (0, 0) is given, we interpret this as the point at infinity:
     // https://docs.rs/ark-ec/0.5.0/src/ark_ec/models/short_weierstrass/affine.rs.html#212-218
     if x == Fq::ZERO && y == Fq::ZERO {
-        return Ok(G1::zero());
+        return Ok(G1::zero(data.env()));
     }
 
-    let point = G1::new_unchecked(x, y);
+    let point = G1::new_unchecked(data.env(), x, y);
 
     // Validate point
     if !point.is_on_curve() {
@@ -225,82 +223,81 @@ pub(crate) fn to_soroban_fr(env: &Env, fr: &Fr) -> soroban_sdk::crypto::bn254::F
     ))
 }
 
-pub(crate) fn to_soroban_g1(env: &Env, affine: &G1) -> soroban_sdk::crypto::bn254::Bn254G1Affine {
-    let mut out = [0u8; 64];
+// pub(crate) fn to_soroban_g1(env: &Env, affine: &G1) -> soroban_sdk::crypto::bn254::Bn254G1Affine {
+//     let mut out = [0u8; 64];
 
-    if affine.is_zero() {
-        return soroban_sdk::crypto::bn254::Bn254G1Affine::from_array(env, &out);
-        // 64 zero bytes = point at infinity
-    }
+//     if affine.is_zero() {
+//         return soroban_sdk::crypto::bn254::Bn254G1Affine::from_array(env, &out);
+//         // 64 zero bytes = point at infinity
+//     }
 
-    let x = affine.x.into_bigint().to_bytes_be();
-    let y = affine.y.into_bigint().to_bytes_be();
+//     let x = affine.x().into_bigint().to_bytes_be();
+//     let y = affine.y().into_bigint().to_bytes_be();
 
-    out[..32].copy_from_slice(&x);
-    out[32..].copy_from_slice(&y);
+//     out[..32].copy_from_slice(&x);
+//     out[32..].copy_from_slice(&y);
 
-    // Spec requires flag bits (0x80 and 0x40) of the first byte to be unset.
-    // For a valid BN254 Fq element these should never be set — assert to catch
-    // any encoding bugs early rather than producing a silently wrong point.
-    assert!(out[0] & 0xc0 == 0, "flag bits set in G1 point encoding");
+//     // Spec requires flag bits (0x80 and 0x40) of the first byte to be unset.
+//     // For a valid BN254 Fq element these should never be set — assert to catch
+//     // any encoding bugs early rather than producing a silently wrong point.
+//     assert!(out[0] & 0xc0 == 0, "flag bits set in G1 point encoding");
 
-    soroban_sdk::crypto::bn254::Bn254G1Affine::from_array(env, &out)
-}
+//     soroban_sdk::crypto::bn254::Bn254G1Affine::from_array(env, &out)
+// }
 
-pub(crate) fn from_soroban_g1(point: &soroban_sdk::crypto::bn254::Bn254G1Affine) -> G1 {
-    let arr = point.to_array();
-    let x = read_u256(&arr[..32]).expect("Conversion should work at this point");
-    let y = read_u256(&arr[32..]).expect("Conversion should work at this point");
+// pub(crate) fn from_soroban_g1(point: &soroban_sdk::crypto::bn254::Bn254G1Affine) -> G1 {
+//     let arr = point.to_array();
+//     let x = read_u256(&arr[..32]).expect("Conversion should work at this point");
+//     let y = read_u256(&arr[32..]).expect("Conversion should work at this point");
 
-    // If (0, 0) is given, we interpret this as the point at infinity:
-    // https://docs.rs/ark-ec/0.5.0/src/ark_ec/models/short_weierstrass/affine.rs.html#212-218
-    if x == U256::zero() && y == U256::zero() {
-        return G1::zero();
-    }
+//     // If (0, 0) is given, we interpret this as the point at infinity:
+//     // https://docs.rs/ark-ec/0.5.0/src/ark_ec/models/short_weierstrass/affine.rs.html#212-218
+//     if x == U256::zero() && y == U256::zero() {
+//         return G1::zero();
+//     }
 
-    G1::new_unchecked(x.into_fq(), y.into_fq())
-}
+//     G1::new_unchecked(x.into_fq(), y.into_fq())
+// }
 
-pub(crate) fn to_soroban_g2(env: &Env, affine: &G2) -> soroban_sdk::crypto::bn254::Bn254G2Affine {
-    let mut out = [0u8; 128];
+// pub(crate) fn to_soroban_g2(env: &Env, affine: &G2) -> soroban_sdk::crypto::bn254::Bn254G2Affine {
+//     let mut out = [0u8; 128];
 
-    if affine.is_zero() {
-        return soroban_sdk::crypto::bn254::Bn254G2Affine::from_array(env, &out);
-        // 128 zero bytes = point at infinity
-    }
+//     if affine.is_zero() {
+//         return soroban_sdk::crypto::bn254::Bn254G2Affine::from_array(env, &out);
+//         // 128 zero bytes = point at infinity
+//     }
 
-    // Fq2 elements have two components: c0 and c1
-    // Ethereum encoding order: c1 before c0 for each coordinate
-    let x_c1 = affine.x.c1.into_bigint().to_bytes_be();
-    let x_c0 = affine.x.c0.into_bigint().to_bytes_be();
-    let y_c1 = affine.y.c1.into_bigint().to_bytes_be();
-    let y_c0 = affine.y.c0.into_bigint().to_bytes_be();
+//     // Fq2 elements have two components: c0 and c1
+//     // Ethereum encoding order: c1 before c0 for each coordinate
+//     let x_c1 = affine.x().c1.into_bigint().to_bytes_be();
+//     let x_c0 = affine.x().c0.into_bigint().to_bytes_be();
+//     let y_c1 = affine.y().c1.into_bigint().to_bytes_be();
+//     let y_c0 = affine.y().c0.into_bigint().to_bytes_be();
 
-    out[0..32].copy_from_slice(&x_c1);
-    out[32..64].copy_from_slice(&x_c0);
-    out[64..96].copy_from_slice(&y_c1);
-    out[96..128].copy_from_slice(&y_c0);
+//     out[0..32].copy_from_slice(&x_c1);
+//     out[32..64].copy_from_slice(&x_c0);
+//     out[64..96].copy_from_slice(&y_c1);
+//     out[96..128].copy_from_slice(&y_c0);
 
-    // Same flag bit check as G1 — valid Fq elements always have top two bits unset
-    assert!(out[0] & 0xc0 == 0, "flag bits set in G2 point encoding");
-    assert!(out[32] & 0xc0 == 0, "flag bits set in G2 point encoding");
-    assert!(out[64] & 0xc0 == 0, "flag bits set in G2 point encoding");
-    assert!(out[96] & 0xc0 == 0, "flag bits set in G2 point encoding");
+//     // Same flag bit check as G1 — valid Fq elements always have top two bits unset
+//     assert!(out[0] & 0xc0 == 0, "flag bits set in G2 point encoding");
+//     assert!(out[32] & 0xc0 == 0, "flag bits set in G2 point encoding");
+//     assert!(out[64] & 0xc0 == 0, "flag bits set in G2 point encoding");
+//     assert!(out[96] & 0xc0 == 0, "flag bits set in G2 point encoding");
 
-    soroban_sdk::crypto::bn254::Bn254G2Affine::from_array(env, &out)
-}
+//     soroban_sdk::crypto::bn254::Bn254G2Affine::from_array(env, &out)
+// }
 
 pub(crate) fn soroban_msm(env: &Env, points: &[G1], scalars: &[crate::Fr]) -> crate::G1 {
     assert_eq!(points.len(), scalars.len());
 
     let mut acc = soroban_sdk::crypto::bn254::Bn254G1Affine::from_array(env, &[0u8; 64]);
     for (point, scalar) in points.iter().zip(scalars.iter()) {
-        let point = to_soroban_g1(env, point);
         let scaled = env
             .crypto()
             .bn254()
-            .g1_mul(&point, &to_soroban_fr(env, scalar));
+            .g1_mul(&point.0, &to_soroban_fr(env, scalar));
         acc = acc + scaled;
     }
-    from_soroban_g1(&acc)
+    crate::G1(acc)
 }

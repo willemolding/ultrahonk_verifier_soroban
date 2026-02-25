@@ -25,14 +25,14 @@ use crate::{
         ZK_BATCHED_RELATION_PARTIAL_LENGTH,
     },
     errors::{ConversionError, GroupError},
-    utils::{read_g1_by_splitting, IntoBEBytes32, IntoU256},
+    utils::{read_g1_by_splitting, split_off, IntoBEBytes32, IntoU256},
     EVMWord, Fq, Fr, Keccak256, G1,
 };
 use alloc::{boxed::Box, vec::Vec};
 use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, MontFp, PrimeField};
 use core::{array::from_fn, fmt};
-use soroban_sdk::Env;
+use soroban_sdk::{Bytes, Env};
 
 /// Unified enum for handling errors of all flavors.
 #[derive(Debug, PartialEq)]
@@ -86,8 +86,8 @@ impl core::fmt::Display for ProofError {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ProofType {
-    Plain(Box<[u8]>),
-    ZK(Box<[u8]>),
+    Plain(Bytes),
+    ZK(Bytes),
 }
 
 // Trait defining shared constants with differing values per type.
@@ -138,26 +138,14 @@ impl ProofSpec for PlainProof {
 }
 
 // Utility function for parsing `Fr` from raw bytes.
-fn read_fr(data: &mut &[u8]) -> Result<Fr, ProofError> {
-    const CHUNK_SIZE: usize = FIELD_ELEMENT_SIZE;
-    let chunk = data.split_off(..CHUNK_SIZE).ok_or(ProofError::OtherError {
-        message: "Unable to read field element from data",
-    })?;
-
-    Ok(Fr::from_be_bytes_mod_order(chunk))
+fn read_fr(data: &mut Bytes) -> Result<Fr, ProofError> {
+    let chunk = split_off::<FIELD_ELEMENT_SIZE>(data);
+    Ok(Fr::from_be_bytes_mod_order(&chunk))
 }
 
 // Utility function for parsing an EVMWord (raw bytes).
-fn read_evm_word(data: &mut &[u8]) -> Result<EVMWord, ProofError> {
-    const CHUNK_SIZE: usize = EVM_WORD_SIZE;
-    let chunk: EVMWord = data
-        .split_off(..CHUNK_SIZE)
-        .ok_or(ProofError::OtherError {
-            message: "Unable to read EVM word from data",
-        })?
-        .try_into()
-        .expect("Conversion should work at this point");
-
+fn read_evm_word(data: &mut Bytes) -> Result<EVMWord, ProofError> {
+    let chunk = split_off::<EVM_WORD_SIZE>(data);
     Ok(chunk)
 }
 
@@ -349,12 +337,12 @@ impl ZKProof {
     }
 
     // Constructs a `ZKProof` from a byte slice and a required log_n parameter.
-    pub fn from_bytes(mut proof_bytes: &[u8], log_n: u64) -> Result<Self, ProofError> {
+    pub fn from_bytes(env: &Env, mut proof_bytes: Bytes, log_n: u64) -> Result<Self, ProofError> {
         let expected_byte_len = Self::calculate_proof_byte_len(log_n);
-        if proof_bytes.len() != expected_byte_len {
+        if proof_bytes.len() != expected_byte_len as u32 {
             return Err(ProofError::IncorrectBufferSize {
                 expected_size: expected_byte_len,
-                actual_size: proof_bytes.len(),
+                actual_size: proof_bytes.len() as usize,
             });
         }
 
@@ -440,7 +428,8 @@ impl ZKProof {
             }
         })?;
 
-        let mut libra_commitments = [G1::default(); NUM_LIBRA_COMMITMENTS];
+        let mut libra_commitments: [G1; NUM_LIBRA_COMMITMENTS] =
+            core::array::from_fn(|_| G1::default(env));
 
         libra_commitments[0] = read_g1_by_splitting(&mut proof_bytes).map_err(|e| {
             ProofError::GroupConversionError {
@@ -683,12 +672,12 @@ impl PlainProof {
     }
 
     // Constructs a `PlainProof` from a byte slice and a required log_n parameter.
-    pub fn from_bytes(mut proof_bytes: &[u8], log_n: u64) -> Result<Self, ProofError> {
+    pub fn from_bytes(env: &Env, mut proof_bytes: Bytes, log_n: u64) -> Result<Self, ProofError> {
         let expected_byte_len = Self::calculate_proof_byte_len(log_n);
-        if proof_bytes.len() != expected_byte_len {
+        if proof_bytes.len() != expected_byte_len as u32 {
             return Err(ProofError::IncorrectBufferSize {
                 expected_size: expected_byte_len,
-                actual_size: proof_bytes.len(),
+                actual_size: proof_bytes.len() as usize,
             });
         }
 
@@ -1006,6 +995,7 @@ impl CommonProofData for ParsedProof {
 
 // Convert a single G1 point from 8 EVM words.
 fn convert_g1_point_from_words(
+    env: &Env,
     words: &[EVMWord], // words must be an 8-element slice
 ) -> Result<G1, ProofError> {
     // Combine 4 words for the x-coordinate
@@ -1052,9 +1042,9 @@ fn convert_g1_point_from_words(
     let p;
     if x_coord == Fq::ZERO && y_coord == Fq::ZERO {
         // (0, 0) is the point at infinity
-        p = G1::zero();
+        p = G1::zero(env);
     } else {
-        p = G1::new_unchecked(x_coord, y_coord);
+        p = G1::new_unchecked(env, x_coord, y_coord);
 
         // Validate point
         if !p.is_on_curve() {
@@ -1076,10 +1066,11 @@ fn convert_g1_point_from_words(
 // The first 8 EVM words correspond to the x and y coordinates of the first G1 point,
 // and the next 8 EVM words correspond to the x and y coordinates of the second G1 point.
 pub(crate) fn convert_pairing_points_to_g1(
+    env: &Env,
     pairing_points: &[EVMWord; PAIRING_POINTS_SIZE],
 ) -> Result<(G1, G1), ProofError> {
-    let p0 = convert_g1_point_from_words(&pairing_points[0..8])?;
-    let p1 = convert_g1_point_from_words(&pairing_points[8..16])?;
+    let p0 = convert_g1_point_from_words(env, &pairing_points[0..8])?;
+    let p1 = convert_g1_point_from_words(env, &pairing_points[8..16])?;
     Ok((p0, p1))
 }
 
@@ -1104,55 +1095,15 @@ pub(crate) fn generate_recursion_separator(
     // hash the accum Y
     let hash: EVMWord = Keccak256::new(env)
         // Proof points
-        .chain_update(
-            proof_lhs
-                .x()
-                .expect("Point is parsed at this point")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            proof_lhs
-                .y()
-                .expect("Point is parsed at this point")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            proof_rhs
-                .x()
-                .expect("Point is parsed at this point")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            proof_rhs
-                .y()
-                .expect("Point is parsed at this point")
-                .into_be_bytes32(),
-        )
+        .chain_update(proof_lhs.x().into_be_bytes32())
+        .chain_update(proof_lhs.y().into_be_bytes32())
+        .chain_update(proof_rhs.x().into_be_bytes32())
+        .chain_update(proof_rhs.y().into_be_bytes32())
         // Accumulator points
-        .chain_update(
-            acc_lhs
-                .x()
-                .expect("Point is parsed at this point")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            acc_lhs
-                .y()
-                .expect("Point is parsed at this point")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            acc_rhs
-                .x()
-                .expect("Point is parsed at this point")
-                .into_be_bytes32(),
-        )
-        .chain_update(
-            acc_rhs
-                .y()
-                .expect("Point is parsed at this point")
-                .into_be_bytes32(),
-        )
+        .chain_update(acc_lhs.x().into_be_bytes32())
+        .chain_update(acc_lhs.y().into_be_bytes32())
+        .chain_update(acc_rhs.x().into_be_bytes32())
+        .chain_update(acc_rhs.y().into_be_bytes32())
         .finalize()
         .into();
 
@@ -1163,6 +1114,11 @@ pub(crate) fn generate_recursion_separator(
 mod should {
     use super::*;
     use rstest::{fixture, rstest};
+
+    #[fixture]
+    fn env() -> Env {
+        Env::default()
+    }
 
     #[fixture]
     fn valid_zk_proof() -> Box<[u8]> {
@@ -1628,13 +1584,20 @@ mod should {
     }
 
     #[rstest]
-    fn parse_valid_zk_proof(valid_zk_proof: Box<[u8]>, logn: u64) {
-        assert!(ZKProof::from_bytes(&valid_zk_proof[..], logn).is_ok());
+    fn parse_valid_zk_proof(env: Env, valid_zk_proof: Box<[u8]>, logn: u64) {
+        assert!(
+            ZKProof::from_bytes(&env, Bytes::from_slice(&env, &valid_zk_proof[..]), logn).is_ok()
+        );
     }
 
     #[rstest]
-    fn parse_valid_plain_proof(valid_plain_proof: Box<[u8]>, logn: u64) {
-        assert!(PlainProof::from_bytes(&valid_plain_proof[..], logn).is_ok());
+    fn parse_valid_plain_proof(env: Env, valid_plain_proof: Box<[u8]>, logn: u64) {
+        assert!(PlainProof::from_bytes(
+            &env,
+            Bytes::from_slice(&env, &valid_plain_proof[..]),
+            logn
+        )
+        .is_ok());
     }
 
     mod reject {
@@ -1643,10 +1606,10 @@ mod should {
         use super::*;
 
         #[rstest]
-        fn a_zk_proof_from_a_short_buffer(valid_zk_proof: Box<[u8]>, logn: u64) {
+        fn a_zk_proof_from_a_short_buffer(env: Env, valid_zk_proof: Box<[u8]>, logn: u64) {
             let invalid_zk_proof = &valid_zk_proof[..valid_zk_proof.len() - 1];
             assert_eq!(
-                ZKProof::from_bytes(&invalid_zk_proof[..], logn),
+                ZKProof::from_bytes(&env, Bytes::from_slice(&env, invalid_zk_proof), logn),
                 Err(ProofError::IncorrectBufferSize {
                     expected_size: ZKProof::calculate_proof_byte_len(logn),
                     actual_size: invalid_zk_proof.len()
@@ -1655,10 +1618,10 @@ mod should {
         }
 
         #[rstest]
-        fn a_plain_proof_from_a_short_buffer(valid_plain_proof: Box<[u8]>, logn: u64) {
+        fn a_plain_proof_from_a_short_buffer(env: Env, valid_plain_proof: Box<[u8]>, logn: u64) {
             let invalid_proof = &valid_plain_proof[..valid_plain_proof.len() - 1];
             assert_eq!(
-                PlainProof::from_bytes(invalid_proof, logn),
+                PlainProof::from_bytes(&env, Bytes::from_slice(&env, invalid_proof), logn),
                 Err(ProofError::IncorrectBufferSize {
                     expected_size: PlainProof::calculate_proof_byte_len(logn),
                     actual_size: invalid_proof.len()
@@ -1667,7 +1630,7 @@ mod should {
         }
 
         #[rstest]
-        fn a_zk_proof_containing_points_not_on_curve(valid_zk_proof: Box<[u8]>) {
+        fn a_zk_proof_containing_points_not_on_curve(env: Env, valid_zk_proof: Box<[u8]>) {
             let log_n = logn() as usize;
             let gemini_masking_poly_offset = PAIRING_POINTS_SIZE * EVM_WORD_SIZE;
             let libra_commitments_1_offset: usize = gemini_masking_poly_offset
@@ -1766,7 +1729,7 @@ mod should {
                 invalid_zk_proof[offset + GROUP_ELEMENT_SIZE - 1] = 3;
 
                 assert_eq!(
-                    ZKProof::from_bytes(&invalid_zk_proof[..], logn()),
+                    ZKProof::from_bytes(&env, Bytes::from_slice(&env, &invalid_zk_proof), logn()),
                     Err(ProofError::GroupConversionError {
                         conv_error: ConversionError {
                             group: GroupError::NotOnCurve,
@@ -1778,7 +1741,7 @@ mod should {
         }
 
         #[rstest]
-        fn a_zk_proof_containing_points_with_coordinates_outside_fq(valid_zk_proof: Box<[u8]>) {
+        fn a_zk_proof_containing_points_with_coordinates_outside_fq(env: Env, valid_zk_proof: Box<[u8]>) {
             let log_n = logn() as usize;
             let gemini_masking_poly_offset = PAIRING_POINTS_SIZE * EVM_WORD_SIZE;
             let libra_commitments_1_offset: usize = gemini_masking_poly_offset
@@ -1877,7 +1840,7 @@ mod should {
                 invalid_zk_proof[offset..offset + EVM_WORD_SIZE].copy_from_slice(&invalid_bytes);
 
                 assert_eq!(
-                    ZKProof::from_bytes(&invalid_zk_proof[..], logn()),
+                    ZKProof::from_bytes(&env, Bytes::from_slice(&env, &invalid_zk_proof), logn()),
                     Err(ProofError::GroupConversionError {
                         conv_error: ConversionError {
                             group: GroupError::CoordinateExceedsModulus {
@@ -1892,7 +1855,7 @@ mod should {
         }
 
         #[rstest]
-        fn a_plain_proof_containing_points_not_on_curve(valid_plain_proof: Box<[u8]>) {
+        fn a_plain_proof_containing_points_not_on_curve(env: Env, valid_plain_proof: Box<[u8]>) {
             let log_n = logn() as usize;
             let w_1_offset = PAIRING_POINTS_SIZE * EVM_WORD_SIZE;
             let gemini_fold_comms_0_offset: usize = w_1_offset
@@ -1963,7 +1926,7 @@ mod should {
                 invalid_plain_proof[offset + GROUP_ELEMENT_SIZE - 1] = 3;
 
                 assert_eq!(
-                    PlainProof::from_bytes(&invalid_plain_proof[..], logn()),
+                    PlainProof::from_bytes(&env, Bytes::from_slice(&env, &invalid_plain_proof), logn()),
                     Err(ProofError::GroupConversionError {
                         conv_error: ConversionError {
                             group: GroupError::NotOnCurve,
@@ -1976,6 +1939,7 @@ mod should {
 
         #[rstest]
         fn a_plain_proof_containing_points_with_coordinates_outside_fq(
+            env: Env,
             valid_plain_proof: Box<[u8]>,
         ) {
             let log_n = logn() as usize;
@@ -2048,7 +2012,7 @@ mod should {
                 invalid_plain_proof[offset..offset + EVM_WORD_SIZE].copy_from_slice(&invalid_bytes);
 
                 assert_eq!(
-                    PlainProof::from_bytes(&invalid_plain_proof[..], logn()),
+                    PlainProof::from_bytes(&env, Bytes::from_slice(&env, &invalid_plain_proof), logn()),
                     Err(ProofError::GroupConversionError {
                         conv_error: ConversionError {
                             group: GroupError::CoordinateExceedsModulus {

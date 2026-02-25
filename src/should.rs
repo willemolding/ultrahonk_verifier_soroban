@@ -561,7 +561,9 @@ fn verify_valid_zk_proof(
     valid_zk_proof: Box<[u8]>,
     valid_pubs: [PublicInput; 1],
 ) {
-    assert!(verify(&env, &valid_vk, &ProofType::ZK(valid_zk_proof), &valid_pubs).is_ok());
+    let valid_vk = Bytes::from_array(&env, &valid_vk);
+    let valid_zk_proof = Bytes::from_slice(&env, &valid_zk_proof);
+    assert!(verify(&env, valid_vk, ProofType::ZK(valid_zk_proof), &valid_pubs).is_ok());
 }
 
 #[rstest]
@@ -571,10 +573,12 @@ fn verify_valid_plain_proof(
     valid_plain_proof: Box<[u8]>,
     valid_pubs: [PublicInput; 1],
 ) {
+    let valid_vk = Bytes::from_array(&env, &valid_vk);
+    let valid_plain_proof = Bytes::from_slice(&env, &valid_plain_proof);
     assert!(verify(
         &env,
-        &valid_vk,
-        &ProofType::Plain(valid_plain_proof),
+        valid_vk,
+        ProofType::Plain(valid_plain_proof),
         &valid_pubs
     )
     .is_ok());
@@ -592,15 +596,11 @@ mod reject {
         _valid_pubs: [PublicInput; 1],
     ) {
         let invalid_pubs: [PublicInput; 0] = [];
+        let valid_vk = Bytes::from_array(&env, &valid_vk);
+        let valid_zk_proof = Bytes::from_slice(&env, &valid_zk_proof);
 
         assert_eq!(
-            verify(
-                &env,
-                &valid_vk,
-                &ProofType::ZK(valid_zk_proof),
-                &invalid_pubs
-            )
-            .unwrap_err(),
+            verify(&env, valid_vk, ProofType::ZK(valid_zk_proof), &invalid_pubs).unwrap_err(),
             VerifyError::PublicInputError {
                 message: "Provided public inputs length does not match value in vk"
             }
@@ -615,12 +615,14 @@ mod reject {
         _valid_pubs: [PublicInput; 1],
     ) {
         let invalid_pubs: [PublicInput; 0] = [];
+        let valid_vk = Bytes::from_array(&env, &valid_vk);
+        let valid_plain_proof = Bytes::from_slice(&env, &valid_plain_proof);
 
         assert_eq!(
             verify(
                 &env,
-                &valid_vk,
-                &ProofType::Plain(valid_plain_proof),
+                valid_vk,
+                ProofType::Plain(valid_plain_proof),
                 &invalid_pubs
             )
             .unwrap_err(),
@@ -637,20 +639,15 @@ mod reject {
         valid_zk_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
     ) {
-        let mut invalid_zk_proof = valid_zk_proof.to_vec();
-        invalid_zk_proof.copy_from_slice(&valid_zk_proof);
+        let valid_vk = Bytes::from_array(&env, &valid_vk);
+        let mut invalid_zk_proof = valid_zk_proof.into_vec();
         invalid_zk_proof[PAIRING_POINTS_SIZE * EVM_WORD_SIZE + 1184
             ..PAIRING_POINTS_SIZE * EVM_WORD_SIZE + 1184 + EVM_WORD_SIZE]
             .fill(0); // Alter sumcheck_univariates[0]
+        let invalid_zk_proof = Bytes::from_slice(&env, &invalid_zk_proof);
 
         assert_eq!(
-            verify(
-                &env,
-                &valid_vk,
-                &ProofType::ZK(invalid_zk_proof.into_boxed_slice()),
-                &valid_pubs
-            )
-            .unwrap_err(),
+            verify(&env, valid_vk, ProofType::ZK(invalid_zk_proof), &valid_pubs).unwrap_err(),
             VerifyError::VerificationError {
                 message: "Sumcheck Failed."
             }
@@ -664,17 +661,18 @@ mod reject {
         valid_plain_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
     ) {
-        let mut invalid_plain_proof = valid_plain_proof.to_vec();
-        invalid_plain_proof.copy_from_slice(&valid_plain_proof);
+        let valid_vk = Bytes::from_array(&env, &valid_vk);
+        let mut invalid_plain_proof = valid_plain_proof.into_vec();
         invalid_plain_proof[PAIRING_POINTS_SIZE * EVM_WORD_SIZE + 0x400
             ..PAIRING_POINTS_SIZE * EVM_WORD_SIZE + 0x400 + EVM_WORD_SIZE]
             .fill(0); // Alter sumcheck_univariates[0]
+        let invalid_plain_proof = Bytes::from_slice(&env, &invalid_plain_proof);
 
         assert_eq!(
             verify(
                 &env,
-                &valid_vk,
-                &ProofType::Plain(invalid_plain_proof.into_boxed_slice()),
+                valid_vk,
+                ProofType::Plain(invalid_plain_proof),
                 &valid_pubs
             )
             .unwrap_err(),
@@ -691,23 +689,18 @@ mod reject {
         valid_zk_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
     ) {
-        let mut invalid_zk_proof = valid_zk_proof.to_vec();
-        invalid_zk_proof.copy_from_slice(&valid_zk_proof);
+        let valid_vk = Bytes::from_array(&env, &valid_vk);
+        let mut invalid_zk_proof = valid_zk_proof.into_vec();
         let sumcheck_evaluations_offset = PAIRING_POINTS_SIZE * EVM_WORD_SIZE
             + 11 * GROUP_ELEMENT_SIZE
             + EVM_WORD_SIZE
             + 108 * EVM_WORD_SIZE;
         invalid_zk_proof[sumcheck_evaluations_offset..sumcheck_evaluations_offset + EVM_WORD_SIZE]
             .fill(0); // Alter sumcheck_evaluations
+        let invalid_zk_proof = Bytes::from_slice(&env, &invalid_zk_proof);
 
         assert_eq!(
-            verify(
-                &env,
-                &valid_vk,
-                &ProofType::ZK(invalid_zk_proof.into_boxed_slice()),
-                &valid_pubs
-            )
-            .unwrap_err(),
+            verify(&env, valid_vk, ProofType::ZK(invalid_zk_proof), &valid_pubs).unwrap_err(),
             VerifyError::VerificationError {
                 message: "Sumcheck Failed."
             }
@@ -721,6 +714,7 @@ mod reject {
         valid_plain_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
     ) {
+        let valid_vk = Bytes::from_array(&env, &valid_vk);
         let mut invalid_plain_proof = valid_plain_proof.into_vec();
         let sumcheck_evaluations_offset = PAIRING_POINTS_SIZE * EVM_WORD_SIZE
             + 11 * GROUP_ELEMENT_SIZE
@@ -729,12 +723,13 @@ mod reject {
         invalid_plain_proof
             [sumcheck_evaluations_offset..sumcheck_evaluations_offset + EVM_WORD_SIZE]
             .fill(0); // Alter sumcheck_evaluations
+        let invalid_plain_proof = Bytes::from_slice(&env, &invalid_plain_proof);
 
         assert_eq!(
             verify(
                 &env,
-                &valid_vk,
-                &ProofType::Plain(invalid_plain_proof.into_boxed_slice()),
+                valid_vk,
+                ProofType::Plain(invalid_plain_proof),
                 &valid_pubs
             )
             .unwrap_err(),
@@ -751,7 +746,9 @@ mod reject {
         valid_zk_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
     ) {
-        let log_circuit_size = VerificationKey::try_from(&valid_vk[..])
+        let valid_vk = Bytes::from_array(&env, &valid_vk);
+
+        let log_circuit_size = VerificationKey::try_from(valid_vk.clone())
             .expect("vk is valid")
             .log_circuit_size;
         let zk_proof_size = ZKProof::calculate_proof_byte_len(log_circuit_size);
@@ -764,15 +761,10 @@ mod reject {
         invalid_zk_proof[offset..offset + GROUP_ELEMENT_SIZE].fill(0);
         invalid_zk_proof[offset + EVM_WORD_SIZE - 1] = 1;
         invalid_zk_proof[offset + 2 * EVM_WORD_SIZE - 1] = 3;
+        let invalid_zk_proof = Bytes::from_slice(&env, &invalid_zk_proof);
 
         assert_eq!(
-            verify(
-                &env,
-                &valid_vk,
-                &ProofType::ZK(invalid_zk_proof.into_boxed_slice()),
-                &valid_pubs
-            )
-            .unwrap_err(),
+            verify(&env, valid_vk, ProofType::ZK(invalid_zk_proof), &valid_pubs).unwrap_err(),
             VerifyError::VerificationError {
                 message: "Shplemini Failed."
             }
@@ -786,7 +778,9 @@ mod reject {
         valid_plain_proof: Box<[u8]>,
         valid_pubs: [PublicInput; 1],
     ) {
-        let log_circuit_size = VerificationKey::try_from(&valid_vk[..])
+        let valid_vk = Bytes::from_array(&env, &valid_vk);
+
+        let log_circuit_size = VerificationKey::try_from(valid_vk.clone())
             .expect("vk is valid")
             .log_circuit_size;
         let plain_proof_size = PlainProof::calculate_proof_byte_len(log_circuit_size);
@@ -799,12 +793,13 @@ mod reject {
         invalid_plain_proof[offset..offset + GROUP_ELEMENT_SIZE].fill(0);
         invalid_plain_proof[offset + EVM_WORD_SIZE - 1] = 1;
         invalid_plain_proof[offset + 2 * EVM_WORD_SIZE - 1] = 3;
+        let invalid_plain_proof = Bytes::from_slice(&env, &invalid_plain_proof);
 
         assert_eq!(
             verify(
                 &env,
-                &valid_vk,
-                &ProofType::Plain(invalid_plain_proof.into_boxed_slice()),
+                valid_vk,
+                ProofType::Plain(invalid_plain_proof),
                 &valid_pubs
             )
             .unwrap_err(),

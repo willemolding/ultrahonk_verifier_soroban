@@ -26,7 +26,7 @@ use crate::{
     EVMWord, Keccak256, G1, U256, VK_SIZE,
 };
 use core::fmt;
-use soroban_sdk::Env;
+use soroban_sdk::{Bytes, Env};
 
 #[derive(Debug, PartialEq)]
 pub enum VerificationKeyError {
@@ -198,11 +198,11 @@ impl VerificationKey {
     }
 }
 
-impl TryFrom<&[u8]> for VerificationKey {
+impl TryFrom<Bytes> for VerificationKey {
     type Error = VerificationKeyError;
 
-    fn try_from(mut raw_vk: &[u8]) -> Result<Self, Self::Error> {
-        if raw_vk.len() < VK_SIZE {
+    fn try_from(mut raw_vk: Bytes) -> Result<Self, Self::Error> {
+        if raw_vk.len() < VK_SIZE as u32 {
             return Err(VerificationKeyError::BufferTooShort);
         }
 
@@ -494,62 +494,62 @@ impl VerificationKey {
             .chain(U256::from(self.log_circuit_size).into_be_bytes32())
             .chain(U256::from(self.combined_input_size).into_be_bytes32())
             .chain(U256::from(self.pub_inputs_offset).into_be_bytes32())
-            .chain(self.q_m.x.into_be_bytes32())
-            .chain(self.q_m.y.into_be_bytes32())
-            .chain(self.q_c.x.into_be_bytes32())
-            .chain(self.q_c.y.into_be_bytes32())
-            .chain(self.q_l.x.into_be_bytes32())
-            .chain(self.q_l.y.into_be_bytes32())
-            .chain(self.q_r.x.into_be_bytes32())
-            .chain(self.q_r.y.into_be_bytes32())
-            .chain(self.q_o.x.into_be_bytes32())
-            .chain(self.q_o.y.into_be_bytes32())
-            .chain(self.q_4.x.into_be_bytes32())
-            .chain(self.q_4.y.into_be_bytes32())
-            .chain(self.q_lookup.x.into_be_bytes32())
-            .chain(self.q_lookup.y.into_be_bytes32())
-            .chain(self.q_arith.x.into_be_bytes32())
-            .chain(self.q_arith.y.into_be_bytes32())
-            .chain(self.q_deltarange.x.into_be_bytes32())
-            .chain(self.q_deltarange.y.into_be_bytes32())
-            .chain(self.q_elliptic.x.into_be_bytes32())
-            .chain(self.q_elliptic.y.into_be_bytes32())
-            .chain(self.q_memory.x.into_be_bytes32())
-            .chain(self.q_memory.y.into_be_bytes32())
-            .chain(self.q_nnf.x.into_be_bytes32())
-            .chain(self.q_nnf.y.into_be_bytes32())
-            .chain(self.q_poseidon2external.x.into_be_bytes32())
-            .chain(self.q_poseidon2external.y.into_be_bytes32())
-            .chain(self.q_poseidon2internal.x.into_be_bytes32())
-            .chain(self.q_poseidon2internal.y.into_be_bytes32())
-            .chain(self.s_1.x.into_be_bytes32())
-            .chain(self.s_1.y.into_be_bytes32())
-            .chain(self.s_2.x.into_be_bytes32())
-            .chain(self.s_2.y.into_be_bytes32())
-            .chain(self.s_3.x.into_be_bytes32())
-            .chain(self.s_3.y.into_be_bytes32())
-            .chain(self.s_4.x.into_be_bytes32())
-            .chain(self.s_4.y.into_be_bytes32())
-            .chain(self.id_1.x.into_be_bytes32())
-            .chain(self.id_1.y.into_be_bytes32())
-            .chain(self.id_2.x.into_be_bytes32())
-            .chain(self.id_2.y.into_be_bytes32())
-            .chain(self.id_3.x.into_be_bytes32())
-            .chain(self.id_3.y.into_be_bytes32())
-            .chain(self.id_4.x.into_be_bytes32())
-            .chain(self.id_4.y.into_be_bytes32())
-            .chain(self.t_1.x.into_be_bytes32())
-            .chain(self.t_1.y.into_be_bytes32())
-            .chain(self.t_2.x.into_be_bytes32())
-            .chain(self.t_2.y.into_be_bytes32())
-            .chain(self.t_3.x.into_be_bytes32())
-            .chain(self.t_3.y.into_be_bytes32())
-            .chain(self.t_4.x.into_be_bytes32())
-            .chain(self.t_4.y.into_be_bytes32())
-            .chain(self.lagrange_first.x.into_be_bytes32())
-            .chain(self.lagrange_first.y.into_be_bytes32())
-            .chain(self.lagrange_last.x.into_be_bytes32())
-            .chain(self.lagrange_last.y.into_be_bytes32())
+            .chain(self.q_m.x().into_be_bytes32())
+            .chain(self.q_m.y().into_be_bytes32())
+            .chain(self.q_c.x().into_be_bytes32())
+            .chain(self.q_c.y().into_be_bytes32())
+            .chain(self.q_l.x().into_be_bytes32())
+            .chain(self.q_l.y().into_be_bytes32())
+            .chain(self.q_r.x().into_be_bytes32())
+            .chain(self.q_r.y().into_be_bytes32())
+            .chain(self.q_o.x().into_be_bytes32())
+            .chain(self.q_o.y().into_be_bytes32())
+            .chain(self.q_4.x().into_be_bytes32())
+            .chain(self.q_4.y().into_be_bytes32())
+            .chain(self.q_lookup.x().into_be_bytes32())
+            .chain(self.q_lookup.y().into_be_bytes32())
+            .chain(self.q_arith.x().into_be_bytes32())
+            .chain(self.q_arith.y().into_be_bytes32())
+            .chain(self.q_deltarange.x().into_be_bytes32())
+            .chain(self.q_deltarange.y().into_be_bytes32())
+            .chain(self.q_elliptic.x().into_be_bytes32())
+            .chain(self.q_elliptic.y().into_be_bytes32())
+            .chain(self.q_memory.x().into_be_bytes32())
+            .chain(self.q_memory.y().into_be_bytes32())
+            .chain(self.q_nnf.x().into_be_bytes32())
+            .chain(self.q_nnf.y().into_be_bytes32())
+            .chain(self.q_poseidon2external.x().into_be_bytes32())
+            .chain(self.q_poseidon2external.y().into_be_bytes32())
+            .chain(self.q_poseidon2internal.x().into_be_bytes32())
+            .chain(self.q_poseidon2internal.y().into_be_bytes32())
+            .chain(self.s_1.x().into_be_bytes32())
+            .chain(self.s_1.y().into_be_bytes32())
+            .chain(self.s_2.x().into_be_bytes32())
+            .chain(self.s_2.y().into_be_bytes32())
+            .chain(self.s_3.x().into_be_bytes32())
+            .chain(self.s_3.y().into_be_bytes32())
+            .chain(self.s_4.x().into_be_bytes32())
+            .chain(self.s_4.y().into_be_bytes32())
+            .chain(self.id_1.x().into_be_bytes32())
+            .chain(self.id_1.y().into_be_bytes32())
+            .chain(self.id_2.x().into_be_bytes32())
+            .chain(self.id_2.y().into_be_bytes32())
+            .chain(self.id_3.x().into_be_bytes32())
+            .chain(self.id_3.y().into_be_bytes32())
+            .chain(self.id_4.x().into_be_bytes32())
+            .chain(self.id_4.y().into_be_bytes32())
+            .chain(self.t_1.x().into_be_bytes32())
+            .chain(self.t_1.y().into_be_bytes32())
+            .chain(self.t_2.x().into_be_bytes32())
+            .chain(self.t_2.y().into_be_bytes32())
+            .chain(self.t_3.x().into_be_bytes32())
+            .chain(self.t_3.y().into_be_bytes32())
+            .chain(self.t_4.x().into_be_bytes32())
+            .chain(self.t_4.y().into_be_bytes32())
+            .chain(self.lagrange_first.x().into_be_bytes32())
+            .chain(self.lagrange_first.y().into_be_bytes32())
+            .chain(self.lagrange_last.x().into_be_bytes32())
+            .chain(self.lagrange_last.y().into_be_bytes32())
             .finalize()
             .into()
     }
@@ -560,6 +560,11 @@ mod should {
     use super::*;
     use crate::errors::GroupError;
     use rstest::{fixture, rstest};
+
+    #[fixture]
+    fn env() -> Env {
+        Env::default()
+    }
 
     #[fixture]
     fn valid_vk() -> [u8; VK_SIZE] {
@@ -629,8 +634,8 @@ mod should {
     }
 
     #[rstest]
-    fn parse_valid_vk(valid_vk: [u8; VK_SIZE]) {
-        assert!(VerificationKey::try_from(&valid_vk[..]).is_ok());
+    fn parse_valid_vk(env: Env, valid_vk: [u8; VK_SIZE]) {
+        assert!(VerificationKey::try_from(Bytes::from_array(&env, &valid_vk)).is_ok());
     }
 
     #[rstest]
@@ -653,33 +658,33 @@ mod should {
         use super::*;
 
         #[rstest]
-        fn a_vk_from_a_short_buffer(valid_vk: [u8; VK_SIZE]) {
+        fn a_vk_from_a_short_buffer(env: Env, valid_vk: [u8; VK_SIZE]) {
             let invalid_vk = &valid_vk[..VK_SIZE - 1];
             assert_eq!(
-                VerificationKey::try_from(&invalid_vk[..]),
+                VerificationKey::try_from(Bytes::from_slice(&env, invalid_vk)),
                 Err(VerificationKeyError::BufferTooShort)
             );
         }
 
         #[rstest]
-        fn a_vk_with_log_circuit_size_zero(valid_vk: [u8; VK_SIZE]) {
+        fn a_vk_with_log_circuit_size_zero(env: Env, valid_vk: [u8; VK_SIZE]) {
             let mut invalid_vk = [0u8; VK_SIZE];
             invalid_vk.copy_from_slice(&valid_vk);
             invalid_vk[..EVM_WORD_SIZE].fill(0);
             assert_eq!(
-                VerificationKey::try_from(&invalid_vk[..]),
+                VerificationKey::try_from(Bytes::from_array(&env, &invalid_vk)),
                 Err(VerificationKeyError::InvalidLogCircuitSize)
             );
         }
 
         #[rstest]
-        fn a_vk_with_log_circuit_size_too_big(valid_vk: [u8; VK_SIZE]) {
+        fn a_vk_with_log_circuit_size_too_big(env: Env, valid_vk: [u8; VK_SIZE]) {
             let mut invalid_vk = [0u8; VK_SIZE];
             invalid_vk.copy_from_slice(&valid_vk);
             let invalid_bytes = U256::from(CONST_PROOF_SIZE_LOG_N as u64 + 1).into_be_bytes32();
             invalid_vk[0..EVM_WORD_SIZE].copy_from_slice(&invalid_bytes);
             assert_eq!(
-                VerificationKey::try_from(&invalid_vk[..]),
+                VerificationKey::try_from(Bytes::from_array(&env, &invalid_vk)),
                 Err(VerificationKeyError::LogCircuitSizeTooBig)
             );
         }
@@ -710,7 +715,10 @@ mod should {
         }
 
         #[rstest]
-        fn a_vk_with_a_point_not_on_curve_for_any_commitment_field(valid_vk: [u8; VK_SIZE]) {
+        fn a_vk_with_a_point_not_on_curve_for_any_commitment_field(
+            env: Env,
+            valid_vk: [u8; VK_SIZE],
+        ) {
             let commitment_fields = [
                 VkCommitmentField::Q_M,
                 VkCommitmentField::Q_C,
@@ -750,7 +758,7 @@ mod should {
                     .fill(1);
 
                 assert_eq!(
-                    VerificationKey::try_from(&invalid_vk[..]).unwrap_err(),
+                    VerificationKey::try_from(Bytes::from_array(&env, &invalid_vk)).unwrap_err(),
                     VerificationKeyError::GroupConversionError {
                         conv_error: ConversionError {
                             group: GroupError::NotOnCurve,

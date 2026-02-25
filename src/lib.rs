@@ -47,7 +47,7 @@ use crate::{
     relations::accumulate_relation_evaluations,
     srs::{SRS_G2, SRS_G2_VK},
     transcript::{generate_transcript, CommonTranscriptData, Transcript},
-    utils::{soroban_msm, to_soroban_g1, IntoBEBytes32},
+    utils::{soroban_msm, to_soroban_fr, IntoBEBytes32},
 };
 use alloc::{boxed::Box, vec::Vec};
 use ark_bn254::G1Projective;
@@ -64,7 +64,7 @@ pub use constants::{PUB_SIZE, VK_SIZE};
 pub use proof::ProofType;
 use soroban_sdk::{
     crypto::bn254::{Bn254G1Affine, Bn254G2Affine},
-    Env,
+    Bytes, Env,
 };
 pub use types::*;
 
@@ -75,28 +75,28 @@ pub type Pubs = [PublicInput];
 /// Verifies a proof against a verification key and public inputs.
 pub fn verify(
     env: &Env,
-    vk_bytes: &[u8],
-    proof: &ProofType,
+    vk_bytes: Bytes,
+    proof: ProofType,
     pubs: &Pubs,
 ) -> Result<(), VerifyError> {
     // Parse VK
     let vk = VerificationKey::try_from(vk_bytes).map_err(|_| VerifyError::KeyError)?;
 
     // Perform preliminary checks on inputs
-    check_proof_byte_len(proof, vk.log_circuit_size)?;
+    check_proof_byte_len(&proof, vk.log_circuit_size)?;
     check_public_input_number(&vk, pubs)?;
 
     // Parse proof
     let proof = match proof {
         ProofType::ZK(proof_bytes) => ParsedProof::ZK(Box::new(
-            ZKProof::from_bytes(&proof_bytes[..], vk.log_circuit_size).map_err(|_| {
+            ZKProof::from_bytes(env, proof_bytes, vk.log_circuit_size).map_err(|_| {
                 VerifyError::InvalidProofError {
                     message: "Failed parsing ZK proof",
                 }
             })?,
         )),
         ProofType::Plain(proof_bytes) => ParsedProof::Plain(Box::new(
-            PlainProof::from_bytes(&proof_bytes[..], vk.log_circuit_size).map_err(|_| {
+            PlainProof::from_bytes(env, proof_bytes, vk.log_circuit_size).map_err(|_| {
                 VerifyError::InvalidProofError {
                     message: "Failed parsing Plain proof",
                 }
@@ -104,14 +104,14 @@ pub fn verify(
         )),
     };
 
-    verify_internal(env, &vk, &proof, pubs)
+    verify_internal(env, vk, proof, pubs)
 }
 
 // Core verification logic.
 fn verify_internal(
     env: &Env,
-    vk: &VerificationKey,
-    parsed_proof: &ParsedProof,
+    vk: VerificationKey,
+    parsed_proof: ParsedProof,
     public_inputs: &Pubs,
 ) -> Result<(), VerifyError> {
     // Compute the verification key hash
@@ -120,7 +120,7 @@ fn verify_internal(
     // Generate the Fiat-Shamir challenges for the whole protocol
     let t: Transcript = generate_transcript(
         env,
-        parsed_proof,
+        &parsed_proof,
         public_inputs,
         &vk_hash,
         vk.log_circuit_size,
@@ -136,7 +136,7 @@ fn verify_internal(
         );
 
     // Sumcheck
-    verify_sumcheck(parsed_proof, &t, vk.log_circuit_size, public_inputs_delta).map_err(|_| {
+    verify_sumcheck(&parsed_proof, &t, vk.log_circuit_size, public_inputs_delta).map_err(|_| {
         VerifyError::VerificationError {
             message: "Sumcheck Failed.",
         }
@@ -294,8 +294,8 @@ fn compute_next_target_sum(
 // Verify the shplemini part of the proof.
 fn verify_shplemini(
     env: &Env,
-    parsed_proof: &ParsedProof,
-    vk: &VerificationKey,
+    parsed_proof: ParsedProof,
+    vk: VerificationKey,
     tp: &Transcript,
 ) -> Result<(), ProofError> {
     // Compute vector (r, r², ..., r²⁽ⁿ⁻¹⁾), where n := log_circuit_size
@@ -311,9 +311,9 @@ fn verify_shplemini(
     };
 
     let mut scalars = Vec::with_capacity(msm_size);
-    scalars.resize(msm_size, Fr::ZERO);
-    let mut commitments = Vec::with_capacity(msm_size);
-    commitments.resize(msm_size, G1::default());
+    // scalars.resize(msm_size, Fr::ZERO);
+    let mut commitments = Vec::<G1>::with_capacity(msm_size);
+    // commitments.resize(msm_size, G1::default());
 
     // NOTE: Can use batching here to go from 2 inversions to 1 inversion + 3 multiplications
     // but the benefit is probably not worth it.
@@ -332,7 +332,7 @@ fn verify_shplemini(
         * (pos_inverted_denominator - tp.shplonk_nu() * neg_inverted_denominator);
 
     scalars[0] = Fr::ONE;
-    commitments[0] = *parsed_proof.shplonk_q();
+    commitments[0] = parsed_proof.shplonk_q().clone();
 
     let unshifted_scalar_neg = -unshifted_scalar;
     let shifted_scalar_neg = -shifted_scalar;
@@ -378,8 +378,8 @@ fn verify_shplemini(
     }
 
     let mut offset = 0;
-    if let ParsedProof::ZK(zkp) = parsed_proof {
-        commitments[1] = zkp.gemini_masking_poly;
+    if let ParsedProof::ZK(ref zkp) = parsed_proof {
+        commitments[1] = zkp.gemini_masking_poly.clone();
         offset = 1;
     }
 
@@ -413,15 +413,15 @@ fn verify_shplemini(
     commitments[28 + offset] = vk.lagrange_last;
 
     // Accumulate proof points
-    commitments[29 + offset] = *parsed_proof.w1();
-    commitments[30 + offset] = *parsed_proof.w2();
-    commitments[31 + offset] = *parsed_proof.w3();
-    commitments[32 + offset] = *parsed_proof.w4();
+    commitments[29 + offset] = parsed_proof.w1().clone();
+    commitments[30 + offset] = parsed_proof.w2().clone();
+    commitments[31 + offset] = parsed_proof.w3().clone();
+    commitments[32 + offset] = parsed_proof.w4().clone();
 
-    commitments[33 + offset] = *parsed_proof.z_perm();
-    commitments[34 + offset] = *parsed_proof.lookup_inverses();
-    commitments[35 + offset] = *parsed_proof.lookup_read_counts();
-    commitments[36 + offset] = *parsed_proof.lookup_read_tags();
+    commitments[33 + offset] = parsed_proof.z_perm().clone();
+    commitments[34 + offset] = parsed_proof.lookup_inverses().clone();
+    commitments[35 + offset] = parsed_proof.lookup_read_counts().clone();
+    commitments[36 + offset] = parsed_proof.lookup_read_tags().clone();
 
     // Add contributions from A₀(r) and A₀(-r) to constant_term_accumulator:
     // Compute the evaluations Aₗ(r^{2ˡ}) for l = 0, ..., logN - 1.
@@ -480,13 +480,13 @@ fn verify_shplemini(
         // Update the running power of v
         batching_challenge *= tp.shplonk_nu().square();
 
-        commitments[boundary + i] = parsed_proof.gemini_fold_comms()[i];
+        commitments[boundary + i] = parsed_proof.gemini_fold_comms()[i].clone();
     }
 
     boundary += vk.log_circuit_size as usize - 1;
 
     // Finalize the batch opening claim
-    match (tp, parsed_proof) {
+    match (tp, &parsed_proof) {
         (Transcript::ZK(zktp), ParsedProof::ZK(zk_proof)) => {
             let mut denominators = [Fr::ZERO; NUM_LIBRA_EVALUATIONS];
 
@@ -518,7 +518,7 @@ fn verify_shplemini(
             scalars[boundary + 2] = batching_scalars[3];
 
             for i in 0..NUM_LIBRA_COMMITMENTS {
-                commitments[boundary] = zk_proof.libra_commitments[i];
+                commitments[boundary] = zk_proof.libra_commitments[i].clone();
                 boundary += 1;
             }
         }
@@ -528,14 +528,14 @@ fn verify_shplemini(
         }
     }
 
-    commitments[boundary] = G1::generator(); // (1, 2)
+    commitments[boundary] = G1::generator(env); // (1, 2)
     scalars[boundary] = constant_term_accumulator;
     boundary += 1;
 
     // ZKProofs only
-    if let ParsedProof::ZK(zk_proof) = parsed_proof {
+    if let ParsedProof::ZK(zk_proof) = &parsed_proof {
         if let Err(msg) = check_evals_consistency(
-            &zk_proof.libra_poly_evals,
+            &zk_proof.libra_poly_evals.clone(),
             tp.gemini_r(),
             tp.sumcheck_u_challenges(),
             zk_proof.libra_evaluation,
@@ -545,14 +545,14 @@ fn verify_shplemini(
         }
     }
 
-    let quotient_commitment = *parsed_proof.kzg_quotient();
+    let quotient_commitment = parsed_proof.kzg_quotient().clone();
 
-    commitments[boundary] = quotient_commitment;
+    commitments[boundary] = quotient_commitment.clone();
     scalars[boundary] = tp.shplonk_z(); // evaluation challenge
 
     // Pairing Check
 
-    let p_0 = soroban_msm(env, &commitments, &scalars);
+    let p_0 = soroban_msm(env, commitments.as_slice(), &scalars);
     // let p_0 = G1Projective::msm(&commitments, &scalars)
     //     .map_err(|_| ProofError::OtherError {
     //         message: "Shplemini MSM computation failed.",
@@ -561,14 +561,25 @@ fn verify_shplemini(
     let p_1 = -quotient_commitment;
 
     // Aggregate pairing points
-    let (p_0_other, p_1_other) = convert_pairing_points_to_g1(parsed_proof.pairing_point_object())?;
+    let (p_0_other, p_1_other) =
+        convert_pairing_points_to_g1(env, parsed_proof.pairing_point_object())?;
     let recursion_separator = generate_recursion_separator(env, &p_0, &p_1, &p_0_other, &p_1_other);
 
     // accumulate with aggregate points in proof
+    let a = env
+        .crypto()
+        .bn254()
+        .g1_mul(&p_0.0, &to_soroban_fr(env, &recursion_separator));
+
+    let b = env
+        .crypto()
+        .bn254()
+        .g1_mul(&p_1.0, &to_soroban_fr(env, &recursion_separator));
+
     let g1_points = soroban_sdk::vec![
         env,
-        to_soroban_g1(env, &(p_0 * recursion_separator + p_0_other).into_affine()),
-        to_soroban_g1(env, &(p_1 * recursion_separator + p_1_other).into_affine()),
+        env.crypto().bn254().g1_add(&a, &p_0_other.0),
+        env.crypto().bn254().g1_add(&b, &p_1_other.0),
     ];
 
     let g2_points = soroban_sdk::vec![
@@ -679,7 +690,7 @@ fn check_proof_byte_len(proof: &ProofType, log_n: u64) -> Result<(), VerifyError
     let expected_byte_len = 32 * expected_word_len;
 
     // Check the received proof is the expected byte length where each field element is 32 bytes
-    if actual_byte_len != expected_byte_len {
+    if actual_byte_len != expected_byte_len as u32 {
         Err(VerifyError::InvalidProofError {
             message: "Provided proof byte length does not match expected byte length",
         })
