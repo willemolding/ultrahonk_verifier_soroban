@@ -178,13 +178,6 @@ pub(crate) fn read_g1_by_splitting(data: &mut Bytes) -> Result<G1, GroupError> {
 
     let point = G1::new_unchecked(data.env(), x, y);
 
-    // Validate point
-    if !point.is_on_curve() {
-        return Err(GroupError::NotOnCurve);
-    }
-    // This is always true for G1 with the BN254 curve.
-    debug_assert!(point.is_in_correct_subgroup_assuming_on_curve());
-
     Ok(point)
 }
 

@@ -11,10 +11,12 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 use ultrahonk_no_std::{ProofType, verify};
-use soroban_sdk::Env;
+use soroban_sdk::{Bytes, Env};
+
+let env = Env::default(); // typically this will come from the contract call
 
 // Sample zero-knowledge proof, vk, and public inputs
-let zk_proof_data = Box::from(include_bytes!("../tests/data/zk/proof").as_slice());
+let zk_proof_data: &[u8] = include_bytes!("../tests/data/zk/proof").as_slice();
 let vk: &[u8] = include_bytes!("../tests/data/zk/vk");
 let pubs: Vec<[u8; 32]> = include_bytes!("../tests/data/zk/pubs")
     .chunks_exact(32)
@@ -22,11 +24,10 @@ let pubs: Vec<[u8; 32]> = include_bytes!("../tests/data/zk/pubs")
     .collect();
 
 // Use the `ProofType::ZK` variant to wrap around `zk_proof_data`.
-let proof: ProofType = ProofType::ZK(zk_proof_data);
-
+let proof: ProofType = ProofType::ZK(Bytes::from_slice(&env, &zk_proof_data));
+let vk = Bytes::from_slice(&env, vk);
 // Call the UltraHonk verifier.
-let env = Env::default();
-assert!(verify(&env, vk, &proof, &pubs).is_ok()); // success
+assert!(verify(&env, vk, proof, &pubs).is_ok()); // success
 ```
 
 > **Note:** Please note that this verifier currently only supports the following configuration:

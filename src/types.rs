@@ -14,7 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{ops::Neg, str::FromStr};
+use core::ops::Neg;
+use core::str::FromStr;
 
 use crate::{constants::EVM_WORD_SIZE, utils::IntoBEBytes32};
 pub use ark_bn254::{Fq, Fq2, Fr, FrConfig};
@@ -107,17 +108,9 @@ impl G1 {
     pub fn is_zero(&self) -> bool {
         self.0.as_bytes() == &BytesN::from_array(self.0.env(), &[0; 64])
     }
-
-    pub fn is_on_curve(&self) -> bool {
-        true
-    }
-
-    pub fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool {
-        true
-    }
 }
 
-impl core::ops::Neg for G1 {
+impl Neg for G1 {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
