@@ -34,10 +34,9 @@ use crate::{
     constants::{EVM_WORD_SIZE, GROUP_ELEMENT_SIZE},
     errors::{FieldError, GroupError},
     types::G1,
-    EVMWord, Fq, Fq2, Fr, G2, U256,
+    EVMWord, Fq, Fr, U256,
 };
 use alloc::{format, string::String};
-use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, PrimeField};
 
 pub(crate) trait IntoFq {

@@ -23,7 +23,6 @@ use crate::{
     utils::IntoBEBytes32,
     EVMWord, Fr, Keccak256, ParsedProof, Pubs,
 };
-use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, Field, PrimeField};
 use soroban_sdk::Env;
 

@@ -18,8 +18,8 @@ use core::ops::Neg;
 use core::str::FromStr;
 
 use crate::{constants::EVM_WORD_SIZE, utils::IntoBEBytes32};
+use ark_bn254::G2Affine;
 pub use ark_bn254::{Fq, Fq2, Fr, FrConfig};
-use ark_bn254::{G1Affine, G2Affine};
 use ark_ff::{BigInt, Fp, PrimeField};
 use soroban_sdk::{Bytes, BytesN, Env};
 

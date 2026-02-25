@@ -1,6 +1,9 @@
 # UltraHonk zk-SNARK Verifier
 
-The UltraHonk zk-SNARK verifier is a Rust-based implementation of Noir's UltraHonk Solidity verifier, optimized to be used contextually with [zkVerify](https://github.com/zkVerify/zkVerify).
+The UltraHonk zk-SNARK verifier is a Rust-based implementation of Noir's UltraHonk Solidity verifier, optimized to be used contextually with [Soroban](https://soroban-stellar.org/).
+
+> [!WARNING]
+> Changes from the original zkVerify implementation are unaudited. Not be used in production at this time.
 
 ## Usage
 

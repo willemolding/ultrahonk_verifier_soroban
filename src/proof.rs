@@ -29,7 +29,6 @@ use crate::{
     EVMWord, Fq, Fr, Keccak256, G1,
 };
 use alloc::{boxed::Box, vec::Vec};
-use ark_ec::AffineRepr;
 use ark_ff::{AdditiveGroup, MontFp, PrimeField};
 use core::{array::from_fn, fmt};
 use soroban_sdk::{Bytes, Env};
@@ -672,7 +671,7 @@ impl PlainProof {
     }
 
     // Constructs a `PlainProof` from a byte slice and a required log_n parameter.
-    pub fn from_bytes(env: &Env, mut proof_bytes: Bytes, log_n: u64) -> Result<Self, ProofError> {
+    pub fn from_bytes(mut proof_bytes: Bytes, log_n: u64) -> Result<Self, ProofError> {
         let expected_byte_len = Self::calculate_proof_byte_len(log_n);
         if proof_bytes.len() != expected_byte_len as u32 {
             return Err(ProofError::IncorrectBufferSize {
@@ -1580,12 +1579,9 @@ mod should {
 
     #[rstest]
     fn parse_valid_plain_proof(env: Env, valid_plain_proof: Box<[u8]>, logn: u64) {
-        assert!(PlainProof::from_bytes(
-            &env,
-            Bytes::from_slice(&env, &valid_plain_proof[..]),
-            logn
-        )
-        .is_ok());
+        assert!(
+            PlainProof::from_bytes(Bytes::from_slice(&env, &valid_plain_proof[..]), logn).is_ok()
+        );
     }
 
     mod reject {

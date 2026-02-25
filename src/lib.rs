@@ -50,22 +50,13 @@ use crate::{
     utils::{soroban_msm, to_soroban_fr, IntoBEBytes32},
 };
 use alloc::{boxed::Box, vec::Vec};
-use ark_bn254::G1Projective;
-use ark_ec::{
-    bn::{G1Prepared, G2Prepared},
-    pairing::Pairing,
-    AffineRepr, CurveGroup, VariableBaseMSM,
-};
-use ark_ff::{batch_inversion, AdditiveGroup, Field, One, PrimeField};
+use ark_ff::{batch_inversion, AdditiveGroup, Field, PrimeField};
 use constants::{SUBGROUP_GENERATOR, SUBGROUP_GENERATOR_INVERSE};
 use errors::VerifyError;
 
 pub use constants::{PUB_SIZE, VK_SIZE};
 pub use proof::ProofType;
-use soroban_sdk::{
-    crypto::bn254::{Bn254G1Affine, Bn254G2Affine},
-    Bytes, Env,
-};
+use soroban_sdk::{crypto::bn254::Bn254G2Affine, Bytes, Env};
 pub use types::*;
 
 /// A single public input.
@@ -96,7 +87,7 @@ pub fn verify(
             })?,
         )),
         ProofType::Plain(proof_bytes) => ParsedProof::Plain(Box::new(
-            PlainProof::from_bytes(env, proof_bytes, vk.log_circuit_size).map_err(|_| {
+            PlainProof::from_bytes(proof_bytes, vk.log_circuit_size).map_err(|_| {
                 VerifyError::InvalidProofError {
                     message: "Failed parsing Plain proof",
                 }
