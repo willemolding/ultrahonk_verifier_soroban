@@ -311,9 +311,9 @@ fn verify_shplemini(
     };
 
     let mut scalars = Vec::with_capacity(msm_size);
-    // scalars.resize(msm_size, Fr::ZERO);
+    scalars.resize(msm_size, Fr::ZERO);
     let mut commitments = Vec::<G1>::with_capacity(msm_size);
-    // commitments.resize(msm_size, G1::default());
+    commitments.resize_with(msm_size, || G1::default(env));
 
     // NOTE: Can use batching here to go from 2 inversions to 1 inversion + 3 multiplications
     // but the benefit is probably not worth it.
